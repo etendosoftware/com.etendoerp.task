@@ -37,11 +37,11 @@
         <default/>
         <onCreateDefault/>
       </column>
-      <column name="ACTION" primaryKey="false" required="true" type="VARCHAR" size="60" autoIncrement="false">
-        <default><![CDATA[null]]></default>
+      <column name="ETASK_TASK_TYPE_ID" primaryKey="false" required="true" type="VARCHAR" size="32" autoIncrement="false">
+        <default/>
         <onCreateDefault/>
       </column>
-      <column name="ETASK_TASK_TYPE_ID" primaryKey="false" required="true" type="VARCHAR" size="32" autoIncrement="false">
+      <column name="ETASK_TASK_STATUS_ID" primaryKey="false" required="true" type="VARCHAR" size="32" autoIncrement="false">
         <default/>
         <onCreateDefault/>
       </column>
@@ -51,6 +51,15 @@
       <foreign-key foreignTable="AD_ORG" name="ETASK_STATE_AD_ORG_FK">
         <reference local="AD_ORG_ID" foreign="AD_ORG_ID"/>
       </foreign-key>
+      <foreign-key foreignTable="ETASK_TASK_STATUS" name="ETASK_STATE_STATUS_FK">
+        <reference local="ETASK_TASK_STATUS_ID" foreign="ETASK_TASK_STATUS_ID"/>
+      </foreign-key>
+      <foreign-key foreignTable="ETASK_TASK_TYPE" name="ETASK_STATE_TASK_TYPE_FK" onDelete="cascade">
+        <reference local="ETASK_TASK_TYPE_ID" foreign="ETASK_TASK_TYPE_ID"/>
+      </foreign-key>
+      <index name="ETASK_STATE_STATUS_IDX" unique="false">
+        <index-column name="ETASK_TASK_STATUS_ID"/>
+      </index>
       <check name="ETASK_STATE_ISACTIVE_CHK"><![CDATA[ISACTIVE IN ('Y', 'N')]]></check>
     </table>
   </database>

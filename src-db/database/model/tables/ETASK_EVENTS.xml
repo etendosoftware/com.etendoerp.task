@@ -41,16 +41,31 @@
         <default/>
         <onCreateDefault/>
       </column>
-      <column name="ACTION" primaryKey="false" required="false" type="VARCHAR" size="32" autoIncrement="false">
-        <default><![CDATA[null]]></default>
+      <column name="ACTION" primaryKey="false" required="true" type="VARCHAR" size="32" autoIncrement="false">
+        <default/>
         <onCreateDefault/>
       </column>
+      <foreign-key foreignTable="OBUIAPP_PROCESS" name="ETASK_EVENTS_ACTION_FK">
+        <reference local="ACTION" foreign="OBUIAPP_PROCESS_ID"/>
+      </foreign-key>
       <foreign-key foreignTable="AD_CLIENT" name="ETASK_EVENTS_AD_CLIENT_FK">
         <reference local="AD_CLIENT_ID" foreign="AD_CLIENT_ID"/>
       </foreign-key>
       <foreign-key foreignTable="AD_ORG" name="ETASK_EVENTS_AD_ORG_FK">
         <reference local="AD_ORG_ID" foreign="AD_ORG_ID"/>
       </foreign-key>
+      <foreign-key foreignTable="ETASK_STATE" name="ETASK_EVENTS_STATE_FK" onDelete="cascade">
+        <reference local="ETASK_STATE_ID" foreign="ETASK_STATE_ID"/>
+      </foreign-key>
+      <index name="FKI_ETASK_EVENTS_STATE_FK" unique="false">
+        <index-column name="ETASK_STATE_ID"/>
+      </index>
+      <index name="FKI_ETASK_STATE_ID" unique="false">
+        <index-column name="ETASK_STATE_ID"/>
+      </index>
+      <index name="FKI_OBUIAPP_PROCESS.NAME" unique="false">
+        <index-column name="ACTION"/>
+      </index>
       <check name="ETASK_EVENTS_ISACTIVE_CHK"><![CDATA[ISACTIVE IN ('Y', 'N')]]></check>
     </table>
   </database>
