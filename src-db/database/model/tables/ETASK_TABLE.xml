@@ -42,7 +42,7 @@
         <onCreateDefault/>
       </column>
       <column name="TABLE_EVENTS" primaryKey="false" required="false" type="VARCHAR" size="60" autoIncrement="false">
-        <default><![CDATA[null]]></default>
+        <default/>
         <onCreateDefault/>
       </column>
       <column name="ACTION" primaryKey="false" required="false" type="VARCHAR" size="32" autoIncrement="false">

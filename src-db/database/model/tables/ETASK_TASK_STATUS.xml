@@ -54,7 +54,7 @@
       <foreign-key foreignTable="AD_ORG" name="ETASK_STATUS_ORG">
         <reference local="AD_ORG_ID" foreign="AD_ORG_ID"/>
       </foreign-key>
-      <index name="ETASK_STATUS_MOD_FKI" unique="false">
+      <index name="ETASK_STATUS_MOD_IDX" unique="false">
         <index-column name="AD_MODULE_ID"/>
       </index>
       <check name="ETASK_STATUS_ISACTIVE_CHK"><![CDATA[ISACTIVE IN ('Y', 'N')]]></check>

@@ -57,14 +57,14 @@
       <foreign-key foreignTable="ETASK_STATE" name="ETASK_EVENTS_STATE_FK" onDelete="cascade">
         <reference local="ETASK_STATE_ID" foreign="ETASK_STATE_ID"/>
       </foreign-key>
-      <index name="FKI_ETASK_EVENTS_STATE_FK" unique="false">
+      <index name="ETASK_EVENT_STATE_IDX" unique="false">
         <index-column name="ETASK_STATE_ID"/>
       </index>
-      <index name="FKI_ETASK_STATE_ID" unique="false">
-        <index-column name="ETASK_STATE_ID"/>
-      </index>
-      <index name="FKI_OBUIAPP_PROCESS.NAME" unique="false">
+      <index name="ETASK_EVENTS_ACTION_IDX" unique="false">
         <index-column name="ACTION"/>
+      </index>
+      <index name="ETASK_EVENTS_STATE_IDX" unique="false">
+        <index-column name="ETASK_STATE_ID"/>
       </index>
       <check name="ETASK_EVENTS_ISACTIVE_CHK"><![CDATA[ISACTIVE IN ('Y', 'N')]]></check>
     </table>

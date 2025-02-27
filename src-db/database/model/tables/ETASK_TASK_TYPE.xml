@@ -34,7 +34,7 @@
         <onCreateDefault/>
       </column>
       <column name="NAME" primaryKey="false" required="true" type="VARCHAR" size="200" autoIncrement="false">
-        <default><![CDATA[null]]></default>
+        <default/>
         <onCreateDefault/>
       </column>
       <foreign-key foreignTable="AD_CLIENT" name="ETASK_TASK_TYPE_AD_CLIENT_FK">
