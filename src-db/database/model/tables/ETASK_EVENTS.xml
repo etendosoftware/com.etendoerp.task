@@ -45,6 +45,10 @@
         <default/>
         <onCreateDefault/>
       </column>
+      <column name="JOBS_JOBLINE_ID" primaryKey="false" required="false" type="VARCHAR" size="32" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
       <foreign-key foreignTable="OBUIAPP_PROCESS" name="ETASK_EVENTS_ACTION_FK">
         <reference local="ACTION" foreign="OBUIAPP_PROCESS_ID"/>
       </foreign-key>
@@ -54,6 +58,9 @@
       <foreign-key foreignTable="AD_ORG" name="ETASK_EVENTS_AD_ORG_FK">
         <reference local="AD_ORG_ID" foreign="AD_ORG_ID"/>
       </foreign-key>
+      <foreign-key foreignTable="JOBS_JOBLINE" name="ETASK_EVENTS_JOBLINE_FK">
+        <reference local="JOBS_JOBLINE_ID" foreign="JOBS_JOBLINE_ID"/>
+      </foreign-key>
       <foreign-key foreignTable="ETASK_STATE" name="ETASK_EVENTS_STATE_FK" onDelete="cascade">
         <reference local="ETASK_STATE_ID" foreign="ETASK_STATE_ID"/>
       </foreign-key>
@@ -62,6 +69,9 @@
       </index>
       <index name="ETASK_EVENTS_ACTION_IDX" unique="false">
         <index-column name="ACTION"/>
+      </index>
+      <index name="ETASK_EVENTS_JOBLINE_IDX" unique="false">
+        <index-column name="JOBS_JOBLINE_ID"/>
       </index>
       <index name="ETASK_EVENTS_STATE_IDX" unique="false">
         <index-column name="ETASK_STATE_ID"/>

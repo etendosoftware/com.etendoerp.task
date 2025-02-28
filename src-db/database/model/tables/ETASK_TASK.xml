@@ -41,6 +41,10 @@
         <default/>
         <onCreateDefault/>
       </column>
+      <column name="ETASK_TASK_TYPE_ID" primaryKey="false" required="true" type="VARCHAR" size="32" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
       <foreign-key foreignTable="AD_USER" name="ETASK_TASK_ASSGND_USER">
         <reference local="ASSIGNED_USER" foreign="AD_USER_ID"/>
       </foreign-key>
