@@ -61,6 +61,9 @@
       <index name="ETASK_STATUS_MOD_IDX" unique="false">
         <index-column name="AD_MODULE_ID"/>
       </index>
+      <unique name="ETASK_STATUS_IDENTIFIER_UNIQUE">
+        <unique-column name="IDENTIFIER"/>
+      </unique>
       <check name="ETASK_STATUS_ISACTIVE_CHK"><![CDATA[ISACTIVE IN ('Y', 'N')]]></check>
     </table>
   </database>
