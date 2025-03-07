@@ -5,11 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.hibernate.criterion.Restrictions;
 import org.openbravo.base.exception.OBException;
-import org.openbravo.dal.core.OBContext;
-import org.openbravo.dal.service.OBCriteria;
-import org.openbravo.dal.service.OBDal;
 import org.openbravo.erpCommon.utility.OBMessageUtils;
 import org.openbravo.model.ad.access.User;
 
@@ -17,6 +13,7 @@ import com.etendoerp.task.data.Status;
 import com.etendoerp.task.data.Task;
 import com.etendoerp.task.data.TaskType;
 import com.etendoerp.task.strategy.UserAvailabilityStrategy;
+import com.etendoerp.task.utils.TaskUtil;
 
 /**
  * The RoundRobinByWorkloadStrategy class implements a workload-based task assignment strategy.
@@ -54,7 +51,6 @@ public class RoundRobinByWorkloadStrategy implements UserAvailabilityStrategy {
    */
   @Override
   public User findUserAccordingStrategy(TaskType taskType) {
-
     if (taskType == null) {
       throw new OBException(OBMessageUtils.messageBD("ETASK_NoTaskTypeFound"));
     }
@@ -64,12 +60,9 @@ public class RoundRobinByWorkloadStrategy implements UserAvailabilityStrategy {
       throw new OBException(OBMessageUtils.messageBD("ETASK_NoUsersFound"));
     }
 
-    List<Task> allTasks = preloadTasks(availableUsers);
+    List<Task> allTasks = TaskUtil.preloadTasks(availableUsers);
     Map<User, Long> userOpenTasks = computeOpenTasksByUser(allTasks);
-    long minLoad = userOpenTasks.values()
-        .stream()
-        .min(Comparator.naturalOrder())
-        .orElse(0L);
+    long minLoad = userOpenTasks.values().stream().min(Comparator.naturalOrder()).orElse(0L);
 
     List<User> minimalLoadOps = availableUsers.stream()
         .filter(u -> userOpenTasks.getOrDefault(u, 0L) == minLoad)
@@ -79,101 +72,37 @@ public class RoundRobinByWorkloadStrategy implements UserAvailabilityStrategy {
       throw new OBException(OBMessageUtils.messageBD("ETASK_NoAvailableUsersByLoad"));
     }
 
-    Long currentIndexBD = taskType.getRrindex();
-    int currentIndex = currentIndexBD != null ? currentIndexBD.intValue() : 0;
-
-    if (currentIndex >= minimalLoadOps.size()) {
-      currentIndex = 0;
-    }
-
+    int currentIndex = (taskType.getRoundRobinIndex() != null) ? taskType.getRoundRobinIndex().intValue() : 0;
     User selectedUser = minimalLoadOps.get(currentIndex);
 
-    currentIndex++;
-    if (currentIndex >= minimalLoadOps.size()) {
-      currentIndex = 0;
-    }
-
-    taskType.setRrindex((long) currentIndex);
-    OBDal.getInstance().save(taskType);
-    OBDal.getInstance().flush();
+    TaskUtil.updateRoundRobinIndex(taskType, currentIndex + 1, minimalLoadOps.size());
 
     return selectedUser;
   }
 
-  /**
-   * Get all users that are available for the given task type. The method returns the list of all users
-   * ordered by username.
-   *
-   * @param taskType
-   *     the task type for which the users need to be found
-   * @return the list of all users ordered by username
-   */
-  @Override
-  public List<User> getUsersAvailable(TaskType taskType) {
-    try {
-      OBContext.setAdminMode(true);
-      OBCriteria<User> criteria = OBDal.getInstance().createCriteria(User.class);
-      criteria.addOrderBy(User.PROPERTY_USERNAME, true);
-
-      return criteria.list();
-    } catch (Exception e) {
-      throw new OBException(e);
-    } finally {
-      OBContext.restorePreviousMode();
-    }
-  }
-
-  /**
-   * Compute the number of open tasks for each user.
-   *
-   * @param allTasks
-   *     the list of all tasks
-   * @return a map with the user as key and the number of open tasks as value
-   */
   private Map<User, Long> computeOpenTasksByUser(List<Task> allTasks) {
-    Status pendingStatus = getStatus("PE");
-    Status inProgressStatus = getStatus("IP");
+    Status pendingStatus = TaskUtil.getStatus("PE");
+    Status inProgressStatus = TaskUtil.getStatus("IP");
 
     return allTasks.stream()
         .filter(wt -> {
           Status st = wt.getStatus();
           return (pendingStatus.equals(st) || inProgressStatus.equals(st));
         })
-        .collect(Collectors.groupingBy(
-            wt -> wt.getAssignedUser(),
-            Collectors.counting()
-        ));
+        .collect(Collectors.groupingBy(Task::getAssignedUser, Collectors.counting()));
   }
 
   /**
-   * Retrieves the status object based on the provided status identifier.
-   *
-   * @param statusIdentifier
-   *     the identifier of the status to be fetched
-   * @return the Status object that matches the given identifier, or null if no matching status is found
-   */
-  private Status getStatus(String statusIdentifier) {
-    OBCriteria<Status> criteria = OBDal.getInstance().createCriteria(Status.class);
-    criteria.add(Restrictions.eq(Status.PROPERTY_IDENTIFIER, statusIdentifier));
-    criteria.setMaxResults(1);
-    return (Status) criteria.uniqueResult();
-  }
-
-  /**
-   * Loads and retrieves tasks assigned to the specified users.
+   * Retrieves a list of users available for the given task type.
+   * The result is always the list of all active users, regardless of the task type.
    * <p>
-   * This method queries the database to fetch all tasks associated with the provided list
-   * of users, specifically those that are currently assigned to them. It returns a list
-   * of these tasks.
-   * </p>
    *
-   * @param users
-   *     the list of users for whom tasks need to be preloaded
-   * @return a list of tasks assigned to the given users
+   * @param taskType
+   *     ignored
+   * @return a list of all active users
    */
-  public static List<Task> preloadTasks(List<User> users) {
-    OBCriteria<Task> warehouseTaskCriteria = OBDal.getInstance().createCriteria(Task.class);
-    warehouseTaskCriteria.add(Restrictions.in(Task.PROPERTY_ASSIGNEDUSER, users));
-    return warehouseTaskCriteria.list();
+  @Override
+  public List<User> getUsersAvailable(TaskType taskType) {
+    return TaskUtil.getActiveUsers();
   }
 }

@@ -3,14 +3,12 @@ package com.etendoerp.task.strategy.impl;
 import java.util.List;
 
 import org.openbravo.base.exception.OBException;
-import org.openbravo.dal.core.OBContext;
-import org.openbravo.dal.service.OBCriteria;
-import org.openbravo.dal.service.OBDal;
 import org.openbravo.erpCommon.utility.OBMessageUtils;
 import org.openbravo.model.ad.access.User;
 
 import com.etendoerp.task.data.TaskType;
 import com.etendoerp.task.strategy.UserAvailabilityStrategy;
+import com.etendoerp.task.utils.TaskUtil;
 
 /**
  * The RoundRobinStrategy class implements a **round-robin** task assignment strategy.
@@ -52,51 +50,31 @@ public class RoundRobinStrategy implements UserAvailabilityStrategy {
    */
   @Override
   public User findUserAccordingStrategy(TaskType taskType) {
-    Long currentIndexBD = taskType.getRrindex();
-    int currentIndex = currentIndexBD != null ? currentIndexBD.intValue() : 0;
+    int currentIndex = (taskType.getRoundRobinIndex() != null) ? taskType.getRoundRobinIndex().intValue() : 0;
 
     List<User> availableUsers = getUsersAvailable(taskType);
     if (availableUsers.isEmpty()) {
       throw new OBException(OBMessageUtils.messageBD("ETASK_NoUsersFound"));
     }
 
-    if (currentIndex >= availableUsers.size()) {
-      currentIndex = 0;
-    }
-
     User selectedUser = availableUsers.get(currentIndex);
-    currentIndex++;
-    taskType.setRrindex((long) currentIndex);
 
-    OBDal.getInstance().save(taskType);
-    OBDal.getInstance().flush();
+    TaskUtil.updateRoundRobinIndex(taskType, currentIndex + 1, availableUsers.size());
 
     return selectedUser;
   }
 
   /**
-   * Return a list of all available users sorted by username, in ascending order.
+   * Retrieves a list of users available for the given task type.
+   * The result is always the list of all active users, regardless of the task type.
    * <p>
-   * This method is used to retrieve the list of available users for task assignment.
-   * The list is sorted by username in ascending order, and the result is cached.
-   * </p>
    *
    * @param taskType
-   *     the task type for which the available users are retrieved.
-   * @return a list of available users sorted by username.
+   *     ignored
+   * @return a list of all active users
    */
   @Override
   public List<User> getUsersAvailable(TaskType taskType) {
-    try {
-      OBContext.setAdminMode(true);
-      OBCriteria<User> criteria = OBDal.getInstance().createCriteria(User.class);
-      criteria.addOrderBy(User.PROPERTY_USERNAME, true);
-
-      return criteria.list();
-    } catch (Exception e) {
-      throw new OBException(e);
-    } finally {
-      OBContext.restorePreviousMode();
-    }
+    return TaskUtil.getActiveUsers();
   }
 }

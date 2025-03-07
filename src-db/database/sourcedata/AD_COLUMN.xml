@@ -2075,7 +2075,7 @@
 <!--C772B9C825C14926AEB155BA89733CA0-->  <AD_CLIENT_ID><![CDATA[0]]></AD_CLIENT_ID>
 <!--C772B9C825C14926AEB155BA89733CA0-->  <AD_ORG_ID><![CDATA[0]]></AD_ORG_ID>
 <!--C772B9C825C14926AEB155BA89733CA0-->  <ISACTIVE><![CDATA[Y]]></ISACTIVE>
-<!--C772B9C825C14926AEB155BA89733CA0-->  <NAME><![CDATA[Rrindex]]></NAME>
+<!--C772B9C825C14926AEB155BA89733CA0-->  <NAME><![CDATA[Round Robin Index]]></NAME>
 <!--C772B9C825C14926AEB155BA89733CA0-->  <DESCRIPTION><![CDATA[Round Robin index for cyclical assignment of operators.]]></DESCRIPTION>
 <!--C772B9C825C14926AEB155BA89733CA0-->  <HELP><![CDATA[This column stores the current position used in the Round Robin algorithm to assign users sequentially. Each time an user is assigned, this index is incremented and reset when the end is reached.]]></HELP>
 <!--C772B9C825C14926AEB155BA89733CA0-->  <COLUMNNAME><![CDATA[Rrindex]]></COLUMNNAME>
