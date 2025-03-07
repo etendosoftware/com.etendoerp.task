@@ -63,17 +63,17 @@ public class AsyncJobGeneratorEventHandler extends EntityPersistenceEventObserve
     State eTaskState = etaskEvents.getState();
 
     // Check if the parent State already has a Job
-    Job jobsJob = eTaskState.getJob();
-    if (jobsJob == null) {
-      jobsJob = OBProvider.getInstance().get(Job.class);
-      jobsJob.setClient(eTaskState.getClient());
-      jobsJob.setOrganization(eTaskState.getOrganization());
-      jobsJob.setActive(true);
-      jobsJob.setEtapIsAsync(true);
-      jobsJob.setName("Async Job for ETaskState " + eTaskState.getId());
-      OBDal.getInstance().save(jobsJob);
+    Job stateJob = eTaskState.getJob();
+    if (stateJob == null) {
+      stateJob = OBProvider.getInstance().get(Job.class);
+      stateJob.setClient(eTaskState.getClient());
+      stateJob.setOrganization(eTaskState.getOrganization());
+      stateJob.setActive(true);
+      stateJob.setEtapIsAsync(true);
+      stateJob.setName("Async Job for ETaskState " + eTaskState.getId());
+      OBDal.getInstance().save(stateJob);
 
-      eTaskState.setJob(jobsJob);
+      eTaskState.setJob(stateJob);
       OBDal.getInstance().save(eTaskState);
     }
 
@@ -81,7 +81,7 @@ public class AsyncJobGeneratorEventHandler extends EntityPersistenceEventObserve
     JobLine jobLine = OBProvider.getInstance().get(JobLine.class);
     jobLine.setClient(etaskEvents.getClient());
     jobLine.setOrganization(etaskEvents.getOrganization());
-    jobLine.setJobsJob(jobsJob);
+    jobLine.setJobsJob(stateJob);
     jobLine.setAction(etaskEvents.getAction());
     jobLine.setLineNo(etaskEvents.getSequenceNo());
     OBDal.getInstance().save(jobLine);
