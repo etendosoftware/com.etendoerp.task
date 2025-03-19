@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
-  <database name="TABLE ETASK_TASK">
-    <table name="ETASK_TASK" primaryKey="ETASK_TASK_KEY">
-      <column name="ETASK_TASK_ID" primaryKey="true" required="true" type="VARCHAR" size="32" autoIncrement="false">
+  <database name="TABLE ETASK_TASK_TYPE">
+    <table name="ETASK_TASK_TYPE" primaryKey="ETASK_TASK_TYPE_PK">
+      <column name="ETASK_TASK_TYPE_ID" primaryKey="true" required="true" type="VARCHAR" size="32" autoIncrement="false">
         <default/>
         <onCreateDefault/>
       </column>
@@ -33,39 +33,20 @@
         <default/>
         <onCreateDefault/>
       </column>
-      <column name="STATUS" primaryKey="false" required="true" type="VARCHAR" size="32" autoIncrement="false">
+      <column name="NAME" primaryKey="false" required="true" type="VARCHAR" size="200" autoIncrement="false">
         <default/>
         <onCreateDefault/>
       </column>
-      <column name="ASSIGNED_USER" primaryKey="false" required="false" type="VARCHAR" size="32" autoIncrement="false">
-        <default/>
+      <column name="RRINDEX" primaryKey="false" required="true" type="DECIMAL" size="10,0" autoIncrement="false">
+        <default><![CDATA[0]]></default>
         <onCreateDefault/>
       </column>
-      <column name="ETASK_TASK_TYPE_ID" primaryKey="false" required="true" type="VARCHAR" size="32" autoIncrement="false">
-        <default/>
-        <onCreateDefault/>
-      </column>
-      <foreign-key foreignTable="AD_USER" name="ETASK_TASK_ASSGND_USER">
-        <reference local="ASSIGNED_USER" foreign="AD_USER_ID"/>
-      </foreign-key>
-      <foreign-key foreignTable="AD_CLIENT" name="ETASK_TASK_CLIENT">
+      <foreign-key foreignTable="AD_CLIENT" name="ETASK_TASK_TYPE_AD_CLIENT_FK">
         <reference local="AD_CLIENT_ID" foreign="AD_CLIENT_ID"/>
       </foreign-key>
-      <foreign-key foreignTable="AD_ORG" name="ETASK_TASK_ORG">
+      <foreign-key foreignTable="AD_ORG" name="ETASK_TASK_TYPE_AD_ORG_FK">
         <reference local="AD_ORG_ID" foreign="AD_ORG_ID"/>
       </foreign-key>
-      <foreign-key foreignTable="ETASK_TASK_STATUS" name="ETASK_TASK_STATUS">
-        <reference local="STATUS" foreign="ETASK_TASK_STATUS_ID"/>
-      </foreign-key>
-      <foreign-key foreignTable="ETASK_TASK_TYPE" name="ETASK_TASK_TYPE_FK">
-        <reference local="ETASK_TASK_TYPE_ID" foreign="ETASK_TASK_TYPE_ID"/>
-      </foreign-key>
-      <index name="ETASK_TASK_STATUS_IDX" unique="false">
-        <index-column name="STATUS"/>
-      </index>
-      <index name="ETASK_TASK_TYPE_IDX" unique="false">
-        <index-column name="ETASK_TASK_TYPE_ID"/>
-      </index>
-      <check name="ETASK_TASK_ISACTIVE_CHK"><![CDATA[ISACTIVE IN ('Y', 'N')]]></check>
+      <check name="ETASK_TASK_TYPE_ISACTIVE_CHK"><![CDATA[ISACTIVE IN ('Y', 'N')]]></check>
     </table>
   </database>

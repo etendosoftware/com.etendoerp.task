@@ -45,6 +45,10 @@
         <default><![CDATA[0]]></default>
         <onCreateDefault/>
       </column>
+      <column name="IDENTIFIER" primaryKey="false" required="true" type="VARCHAR" size="40" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
       <foreign-key foreignTable="AD_CLIENT" name="ETASK_STATUS_CLIENT">
         <reference local="AD_CLIENT_ID" foreign="AD_CLIENT_ID"/>
       </foreign-key>
@@ -57,6 +61,9 @@
       <index name="ETASK_STATUS_MOD_IDX" unique="false">
         <index-column name="AD_MODULE_ID"/>
       </index>
+      <unique name="ETASK_STATUS_IDENTIFIER_UNIQUE">
+        <unique-column name="IDENTIFIER"/>
+      </unique>
       <check name="ETASK_STATUS_ISACTIVE_CHK"><![CDATA[ISACTIVE IN ('Y', 'N')]]></check>
     </table>
   </database>
