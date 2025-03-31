@@ -1,0 +1,56 @@
+/**
+*   This file was generated automatically by the 'createModuleBuild' task.
+*   Created at: 2024-12-18T12:35:40.748711Z.
+*
+*   WARNING: Do not put your credentials directly in this file.
+*
+*/
+
+group          = "com.etendoerp"
+version        = "1.1.0"
+description    = "This module provides the possibility of defining generic tasks."
+ext.artifact   = "task"
+ext.repository = "https://maven.pkg.github.com/etendosoftware/com.etendoerp.essentials.extensions"
+
+configurations {
+    moduleDependencyContainer
+}
+
+publishing {
+    publications {
+        "com.etendoerp.task"(MavenPublication) {
+            from components.java
+            groupId    = group
+            artifactId = artifact
+            version    = version
+        }
+    }
+    repositories {
+        maven {
+            url "https://maven.pkg.github.com/etendosoftware/com.etendoerp.essentials.extensions"
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        url "https://maven.pkg.github.com/etendosoftware/com.etendoerp.essentials.extensions"
+    }
+}
+
+sourceSets {
+    main {
+        resources {
+            srcDirs("etendo-resources")
+        }
+    }
+}
+
+/**
+* Declare Java dependencies using 'implementation'
+* Ex: implementation "com.sun.mail:javax.mail:1.6.2"
+*/
+dependencies {
+
+}
