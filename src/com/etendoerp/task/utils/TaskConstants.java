@@ -25,4 +25,9 @@ public class TaskConstants {
 
   /* Generic constants */
   public static final String TASK_ID_PROPERTY = "task_id";
+
+  /* Async Process constants */
+  public static final String ASYNC_PROCESS_ERROR = "asyncprocess.error";
+  public static final String ASYNC_PROCESS_RESULT = "asyncprocess.result";
+  public static final String ASYNC_DONE_TARGET_STATUS = "DONE";
 }

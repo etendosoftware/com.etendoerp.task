@@ -15,6 +15,7 @@ import org.openbravo.dal.service.OBDal;
 
 import com.etendoerp.task.data.Events;
 import com.etendoerp.task.data.State;
+import com.etendoerp.task.utils.TaskConstants;
 import com.smf.jobs.model.Job;
 import com.smf.jobs.model.JobLine;
 
@@ -71,6 +72,7 @@ public class AsyncJobGeneratorEventHandler extends EntityPersistenceEventObserve
       stateJob.setActive(true);
       stateJob.setEtapIsAsync(true);
       stateJob.setName("Async Job for ETaskState " + eTaskState.getId());
+      stateJob.setEtapErrortopic(TaskConstants.ASYNC_PROCESS_ERROR);
       OBDal.getInstance().save(stateJob);
 
       eTaskState.setJob(stateJob);
@@ -84,6 +86,8 @@ public class AsyncJobGeneratorEventHandler extends EntityPersistenceEventObserve
     jobLine.setJobsJob(stateJob);
     jobLine.setAction(etaskEvents.getAction());
     jobLine.setLineNo(etaskEvents.getSequenceNo());
+    jobLine.setEtapTargettopic(TaskConstants.ASYNC_PROCESS_RESULT);
+    jobLine.setEtapTargetstatus(TaskConstants.ASYNC_DONE_TARGET_STATUS);
     OBDal.getInstance().save(jobLine);
 
     // Link the newly created JobLine to the Events record
