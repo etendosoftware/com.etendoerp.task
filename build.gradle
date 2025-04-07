@@ -7,7 +7,7 @@
 */
 
 group          = "com.etendoerp"
-version        = "1.0.0"
+version        = "1.1.0"
 description    = "This module provides the possibility of defining generic tasks."
 ext.artifact   = "task"
 ext.repository = "https://maven.pkg.github.com/etendosoftware/com.etendoerp.essentials.extensions"
