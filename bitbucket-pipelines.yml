@@ -57,7 +57,7 @@ definitions:
     - step: &build-step
         name: SonarQube analysis
         script:
-          - pipe: sonarsource/sonarqube-scan:1.0.0
+          - pipe: sonarsource/sonarqube-scan:3.1.0
             variables:
               SONAR_HOST_URL: ${SONAR_HOST_URL} # Get the value from the repository/workspace variable.
               SONAR_TOKEN: ${SONAR_TOKEN} # Get the value from the repository/workspace variable. You shouldn't set secret in clear text here.
@@ -67,15 +67,15 @@ definitions:
 
 pipelines:
   branches:
-    '{master,main,develop,epic/ETP-1200}':
+    "{master,main,develop,epic/ETP-1200}":
       - step: *build-step
   pull-requests:
-    'develop':
+    "develop":
       - step:
           script:
             - echo "Skip for develop branch"
             - exit 0
-    '**':
+    "**":
       - step: *git-police
       - parallel:
           - step: *make-review
