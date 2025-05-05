@@ -49,6 +49,10 @@
         <default/>
         <onCreateDefault/>
       </column>
+      <column name="FILTER" primaryKey="false" required="false" type="VARCHAR" size="2000" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
       <foreign-key foreignTable="OBUIAPP_PROCESS" name="ETASK_STATE_ACTION_FK">
         <reference local="ACTION" foreign="OBUIAPP_PROCESS_ID"/>
       </foreign-key>
