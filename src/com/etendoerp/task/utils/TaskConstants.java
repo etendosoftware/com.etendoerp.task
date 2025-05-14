@@ -25,6 +25,10 @@ public class TaskConstants {
 
   /* Generic constants */
   public static final String TASK_ID_PROPERTY = "task_id";
+  public static final String ADMIN_USER = "100";
+  public static final String AD_CLIENT_ATTR = "ad_client_id";
+  public static final String AD_ORG_ATTR = "ad_org_id";
+  public static final String TABLE_EVENTS_REF = "687091A6C1A1406EA9942575D671EBE8";
 
   /* Async Process constants */
   public static final String ASYNC_PROCESS_ERROR = "asyncprocess.error";
