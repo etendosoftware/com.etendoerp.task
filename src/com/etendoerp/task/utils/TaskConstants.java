@@ -28,6 +28,10 @@ public class TaskConstants {
   public static final String ADMIN_USER = "100";
   public static final String AD_CLIENT_ATTR = "ad_client_id";
   public static final String AD_ORG_ATTR = "ad_org_id";
+  public static final String SOURCE = "source";
+  public static final String TABLE = "table";
+  public static final String OPERATION = "op";
+  public static final String AFTER = "after";
   public static final String TABLE_EVENTS_REF = "687091A6C1A1406EA9942575D671EBE8";
 
   /* Async Process constants */

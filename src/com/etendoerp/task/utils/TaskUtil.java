@@ -167,20 +167,20 @@ public class TaskUtil {
 
     JSONObject normalized = new JSONObject();
 
-    if (!parameters.has("source") || parameters.isNull("source")) {
+    if (!parameters.has(TaskConstants.SOURCE) || parameters.isNull(TaskConstants.SOURCE)) {
       throw new OBException(OBMessageUtils.getI18NMessage("ETASK_MissingSource"));
     }
-    JSONObject source = parameters.getJSONObject("source");
-    if (!source.has("table") || source.getString("table").isEmpty()) {
+    JSONObject source = parameters.getJSONObject(TaskConstants.SOURCE);
+    if (!source.has(TaskConstants.TABLE) || source.getString(TaskConstants.TABLE).isEmpty()) {
       throw new OBException(OBMessageUtils.getI18NMessage("ETASK_MissingTable"));
     }
-    normalized.put("table", source.getString("table"));
+    normalized.put(TaskConstants.TABLE, source.getString(TaskConstants.TABLE));
 
-    if (!parameters.has("op") || parameters.getString("op").isEmpty()) {
+    if (!parameters.has(TaskConstants.OPERATION) || parameters.getString(TaskConstants.OPERATION).isEmpty()) {
       throw new OBException(OBMessageUtils.getI18NMessage("ETASK_MissingVerb"));
     }
     String verb;
-    switch (parameters.getString("op")) {
+    switch (parameters.getString(TaskConstants.OPERATION)) {
       case "c":
         verb = "create";
         break;
@@ -191,14 +191,15 @@ public class TaskUtil {
         verb = "delete";
         break;
       default:
-        throw new OBException("Invalid operation: " + parameters.getString("op"));
+        throw new OBException(String.format(OBMessageUtils.messageBD("ETASK_InvalidDatabaseOperation"),
+            parameters.getString(TaskConstants.OPERATION)));
     }
     normalized.put("verb", verb);
 
-    if (!parameters.has("after") || parameters.isNull("after")) {
+    if (!parameters.has(TaskConstants.AFTER) || parameters.isNull(TaskConstants.AFTER)) {
       throw new OBException(OBMessageUtils.getI18NMessage("ETASK_MissingData"));
     }
-    JSONObject data = parameters.getJSONObject("after");
+    JSONObject data = parameters.getJSONObject(TaskConstants.AFTER);
     normalized.put("data", data);
 
     return normalized;
@@ -273,7 +274,8 @@ public class TaskUtil {
 
       Class<?> clazz = Class.forName(className);
       if (!Action.class.isAssignableFrom(clazz)) {
-        throw new OBException("Process " + proc.getName() + " does not extend Action");
+        throw new OBException(String.format(OBMessageUtils.messageBD("ETASK_ProcessDoesNotAction"),
+            proc.getName()));
       }
       Action advAction = (Action) clazz.getDeclaredConstructor().newInstance();
 
@@ -287,7 +289,7 @@ public class TaskUtil {
 
     } catch (Exception e) {
       log.error("Advanced logic failed", e);
-      throw new OBException("Advanced logic validation failed: " + e.getMessage(), e);
+      throw new OBException(e);
     }
   }
 

@@ -116,12 +116,12 @@ public class TaskTypeMatchJob extends Action {
           taskCreated = true;
 
           msg.append(String.format(OBMessageUtils.messageBD("ETASK_TaskCreatedSuccessfully"),
-              rule.getTaskType().getIdentifier(), tableName) + "\n");
+              rule.getTaskType().getIdentifier(), tableName)).append("\n");
           log.debug("Rule processed successfully, task created.");
         } catch (Exception ruleEx) {
           log.error("Error processing rule [{}]: {}", rule.getIdentifier(), ruleEx.getMessage(), ruleEx);
           msg.append(String.format(OBMessageUtils.messageBD("ETASK_ErrorProcessingRule"),
-              rule.getIdentifier(), ruleEx.getMessage()) + "\n");
+              rule.getIdentifier(), ruleEx.getMessage())).append("\n");
         }
       }
 
