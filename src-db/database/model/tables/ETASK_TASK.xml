@@ -45,6 +45,10 @@
         <default/>
         <onCreateDefault/>
       </column>
+      <column name="CREATED_AUTOMATICALLY" primaryKey="false" required="true" type="CHAR" size="1" autoIncrement="false">
+        <default><![CDATA[N]]></default>
+        <onCreateDefault/>
+      </column>
       <foreign-key foreignTable="AD_USER" name="ETASK_TASK_ASSGND_USER">
         <reference local="ASSIGNED_USER" foreign="AD_USER_ID"/>
       </foreign-key>
