@@ -49,6 +49,20 @@
 <!--CEBDC2E68B1549F7B4F726A8174E532C-->  <ISACTIVE><![CDATA[Y]]></ISACTIVE>
 <!--CEBDC2E68B1549F7B4F726A8174E532C-->  <VALUE><![CDATA[ETASK_TaskTypeMatchJob]]></VALUE>
 <!--CEBDC2E68B1549F7B4F726A8174E532C-->  <NAME><![CDATA[Task Type Match]]></NAME>
+<!--CEBDC2E68B1549F7B4F726A8174E532C-->  <DESCRIPTION><![CDATA[Automatically processes Debezium Kafka events to evaluate table rules and create tasks in Etendo ERP based on filters and advanced logic.]]></DESCRIPTION>
+<!--CEBDC2E68B1549F7B4F726A8174E532C-->  <HELP><![CDATA[This action is automatically triggered by Debezium events captured from the database and published to Kafka. It is part of the Etendo ERP integration framework that allows real-time processing of database changes.
+
+When a Debezium event (insert, update, or delete) is received, the action:
+ - Parses the event to identify the affected table and operation type.
+ - Retrieves the configured rules for the corresponding table and event.
+ - Evaluates optional filters written in JEXL expressions.
+ - Executes advanced logic processes if defined (OBUIAPP-based).
+ - Creates a new task in the system if all validation steps pass.
+
+The created task is assigned to the initial state defined in the task type.
+If no rules match or validation fails, no task is created.
+This process is not executed manually. It is invoked internally by the Kafka event processing mechanism.
+Proper configuration of table rules and task types is required.]]></HELP>
 <!--CEBDC2E68B1549F7B4F726A8174E532C-->  <ACCESSLEVEL><![CDATA[3]]></ACCESSLEVEL>
 <!--CEBDC2E68B1549F7B4F726A8174E532C-->  <CLASSNAME><![CDATA[com.etendoerp.task.action.TaskTypeMatchJob]]></CLASSNAME>
 <!--CEBDC2E68B1549F7B4F726A8174E532C-->  <ISBACKGROUND><![CDATA[N]]></ISBACKGROUND>

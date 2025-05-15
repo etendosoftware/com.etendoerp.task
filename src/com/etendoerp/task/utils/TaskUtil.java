@@ -10,6 +10,7 @@ import org.apache.commons.jexl3.JexlContext;
 import org.apache.commons.jexl3.JexlEngine;
 import org.apache.commons.jexl3.JexlExpression;
 import org.apache.commons.jexl3.MapContext;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.mutable.MutableBoolean;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -267,7 +268,7 @@ public class TaskUtil {
       Process proc = rule.getAction();
       String className = proc.getJavaClassName();
 
-      if (className == null || className.isBlank()) {
+      if (StringUtils.isBlank(className)) {
         log.warn("Process {} without javaClassName – rule skipped", proc.getName());
         return false;
       }
