@@ -25,17 +25,32 @@ public class TaskConstants {
 
   /* Generic constants */
   public static final String TASK_ID_PROPERTY = "task_id";
+  public static final String TASK_TYPE_ID_PROPERTY = "etask_task_type_id";
   public static final String ADMIN_USER = "100";
   public static final String AD_CLIENT_ATTR = "ad_client_id";
   public static final String AD_ORG_ATTR = "ad_org_id";
   public static final String SOURCE = "source";
   public static final String TABLE = "table";
+  public static final String VERB = "verb";
   public static final String OPERATION = "op";
+  public static final String BEFORE = "before";
   public static final String AFTER = "after";
   public static final String TABLE_EVENTS_REF = "687091A6C1A1406EA9942575D671EBE8";
+  public static final String NEXT = "next";
+  public static final String MESSAGE = "message";
+  public static final String STATE = "state";
+  public static final String STATUS = "status";
+  public static final String ERROR = "error";
+  public static final String TOPIC = "topic";
+  public static final String CREATED_AUTOMATICALLY = "created_automatically";
+  public static final String TASK = "task";
 
-  /* Async Process constants */
-  public static final String ASYNC_PROCESS_ERROR = "asyncprocess.error";
-  public static final String ASYNC_PROCESS_RESULT = "asyncprocess.result";
-  public static final String ASYNC_DONE_TARGET_STATUS = "DONE";
+  /* Task constants */
+  public static final String TASK_TABLENAME = "etask_task";
+
+  /* Table Events constants */
+  public static final String TABLE_CREATE = "create";
+  public static final String TABLE_UPDATE = "update";
+  public static final String TABLE_DELETE = "delete";
+
 }

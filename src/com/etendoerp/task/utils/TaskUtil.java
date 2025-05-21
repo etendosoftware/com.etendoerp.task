@@ -1,6 +1,7 @@
 package com.etendoerp.task.utils;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
@@ -29,6 +30,7 @@ import org.openbravo.model.ad.domain.Reference;
 import org.openbravo.model.ad.system.Client;
 import org.openbravo.model.common.enterprise.Organization;
 
+import com.etendoerp.task.data.Events;
 import com.etendoerp.task.data.State;
 import com.etendoerp.task.data.Status;
 import com.etendoerp.task.data.Table;
@@ -40,142 +42,313 @@ import com.smf.jobs.Data;
 import com.smf.jobs.Result;
 
 /**
- * <h2>TaskUtil</h2>
+ * Utility class for managing task-related operations in Etendo ERP.
  *
- * <p>Centralised helper methods for task-related operations <em>and</em>
- * shared logic used by Etendo task {@code Action}s.</p>
+ * <p>Provides static methods to support:
+ * <ul>
+ *   <li>Creating tasks based on matching rules and initial states.</li>
+ *   <li>Validating filters and executing advanced logic using JEXL or scheduled actions.</li>
+ *   <li>Accessing and manipulating related entities such as users, states, tables, events, and task types.</li>
+ *   <li>Validating and normalizing event parameters for task processing.</li>
+ * </ul>
  *
- * <p>Two categories of utilities coexist:</p>
- * <ol>
- *   <li><strong>Business helpers</strong> – original methods dealing with users,
- *       task pre-loading and round-robin indices.</li>
- *   <li><strong>Action helpers</strong> – logic formerly embedded in
- *       {@code TaskTypeMatchJob}: Debezium event normalisation, JEXL
- *       filter evaluation and execution of advanced validations
- *       (extra {@link Action}s declared in {@code etask_table}).</li>
- * </ol>
+ * <p>This class is marked as {@code final} and has a private constructor, preventing instantiation
+ * and inheritance. It is designed to offer reusable logic across jobs and processes in the task module.
  *
- * <p>All methods are {@code static}. The constructor is private and
- * throws {@link IllegalStateException} to prevent instantiation.</p>
- *
- * <p><b>Thread-safety:</b> Methods that access Openbravo DAL must be
- * executed with care regarding {@link OBContext} and session handling.
- * Each helper opens admin mode when required and restores the previous
- * mode in a {@code finally} block.</p>
+ * <p>Key dependencies:
+ * <ul>
+ *   <li>{@link OBDal} for data access and persistence operations.</li>
+ *   <li>{@link JexlEngine} for dynamic expression evaluation.</li>
+ *   <li>{@link com.smf.jobs.Action} for executing custom user-defined logic.</li>
+ * </ul>
  */
-public class TaskUtil {
+public final class TaskUtil {
 
   private static final Logger log = LogManager.getLogger(TaskUtil.class);
 
-  /**
-   * Private constructor to prevent instantiation of this utility class.
-   *
-   * @throws UnsupportedOperationException
-   *     if an attempt is made to instantiate the class.
-   */
   private TaskUtil() {
     throw new IllegalStateException("Utility class");
   }
 
   /**
-   * Return a list of all available users sorted by username, in ascending order.
-   * <p>
-   * This method is used to retrieve the list of available users for task assignment.
-   * The list is sorted by username in ascending order, and the result is cached.
-   * </p>
+   * Represents the outcome of executing a scheduled {@link com.smf.jobs.Action}.
    *
-   * @return a list of available users sorted by username.
+   * <p>This class is used to encapsulate the result of an action execution,
+   * indicating whether it was successful and holding the resulting message, if any.
+   * The message is typically returned as a {@link JSONObject}, or {@code null} if no message was produced.
+   *
+   * <p>Instances of this class are immutable and are returned from utility methods such as
+   * {@link TaskUtil#runAction(Process, JSONObject)}.
+   *
+   * @see com.smf.jobs.Action
+   * @see TaskUtil#runAction(Process, JSONObject)
+   */
+  public static class ActionOutcome {
+    /**
+     * Indicates whether the action was successfully executed.
+     *
+     * <p>If {@code true}, the action completed without errors.
+     * If {@code false}, the action failed or threw an exception.
+     */
+    public final boolean success;
+
+    /**
+     * Optional message returned by the action.
+     *
+     * <p>This is typically a JSON object containing additional information
+     * about the action's result. It may be {@code null} if the action
+     * did not produce a structured message.
+     */
+    public final JSONObject message;
+
+    ActionOutcome(boolean success, JSONObject message) {
+      this.success = success;
+      this.message = message;
+    }
+  }
+
+  /**
+   * Executes the given {@link Process} as an {@link Action} and returns the outcome of the execution.
+   * <p>
+   * The process is expected to be an {@link Action} implementation, and the provided JSON payload is
+   * passed to the action as its parameters.
+   * <p>
+   * The method returns an {@link ActionOutcome} that contains the success status and the message
+   * returned by the action. If the action does not return a JSON message, the message is null.
+   * <p>
+   * If any error occurs during the execution, the method throws an {@link OBException}.
+   *
+   * @param proc
+   *     the process to execute
+   * @param payload
+   *     the JSON payload to pass as parameters to the action
+   * @return the outcome of the action execution
+   */
+  public static ActionOutcome runAction(Process proc, JSONObject payload) {
+
+    String className = proc.getJavaClassName();
+    if (StringUtils.isBlank(className)) {
+      throw new OBException(String.format(OBMessageUtils.messageBD("ETASK_ProcessWithoutClassName"), proc.getName()));
+    }
+
+    try {
+      Class<?> clazz = Class.forName(className);
+      if (!Action.class.isAssignableFrom(clazz)) {
+        throw new OBException(String.format(OBMessageUtils.messageBD("ETASK_ProcessIsNotAction"), proc.getName()));
+      }
+
+      Action act = (Action) clazz.getDeclaredConstructor().newInstance();
+
+      Method setParams = Action.class.getDeclaredMethod("setParameters", JSONObject.class);
+      setParams.setAccessible(true);
+      setParams.invoke(act, payload);
+
+      ActionResult ar = act.run(new Data(), new MutableBoolean(false));
+
+      JSONObject msg = null;
+      String raw = ar.getMessage();
+      if (raw != null && !raw.isBlank()) {
+        try {
+          msg = new JSONObject(raw);
+        } catch (JSONException je) {
+          log.debug("Action {} returned plain text message: {}", className, raw);
+        }
+      }
+      return new ActionOutcome(Result.Type.SUCCESS.equals(ar.getType()), msg);
+
+    } catch (Exception e) {
+      log.error("Error running Action {}", className, e);
+      throw new OBException(e);
+    }
+  }
+
+  /**
+   * Validates a JEXL filter against the given data.
+   *
+   * <p>This method will return {@code false} if the filter is invalid or does not return a boolean
+   * value.
+   *
+   * @param filter
+   *     JEXL filter string
+   * @param data
+   *     JSON object containing data to evaluate against
+   * @return whether the filter validated against the data
+   */
+  public static boolean validateFilter(String filter, JSONObject data) {
+    try {
+      JexlEngine eng = new JexlBuilder().create();
+      JexlContext ctx = new MapContext();
+      Iterator<?> it = data.keys();
+      while (it.hasNext()) {
+        String k = (String) it.next();
+        ctx.set(k, data.get(k));
+      }
+      JexlExpression expr = eng.createExpression(filter);
+      Object res = expr.evaluate(ctx);
+      if (!(res instanceof Boolean)) {
+        log.warn("Filter '{}' did not return boolean, got {}", filter, res);
+        return false;
+      }
+      return (Boolean) res;
+
+    } catch (Exception e) {
+      log.error("Filter evaluation failed", e);
+      return false;
+    }
+  }
+
+  /**
+   * Executes the advanced logic (an {@link Action}) associated with the given {@link Table} rule.
+   * <p>
+   * If the rule has no advanced logic, this method simply returns true.
+   * <p>
+   * The action is executed with the given data as context. The method returns true if the action
+   * succeeds, false otherwise.
+   *
+   * @param rule
+   *     The {@link Table} rule to execute.
+   * @param data
+   *     Data to use as context for the advanced logic action.
+   * @return true if the action succeeds, false otherwise.
+   */
+  public static boolean executeAdvancedLogic(Table rule, JSONObject data) {
+    if (rule.getAction() == null) {
+      return true;
+    }
+    ActionOutcome out = runAction(rule.getAction(), data);
+    return out.success;
+  }
+
+  /**
+   * Retrieves a list of active users.
+   * <p>
+   * This method runs in <strong>admin mode</strong>, so it is not affected by the
+   * current user's permissions. The returned list is ordered alphabetically by
+   * username.
+   *
+   * @return a list of active User instances
+   * @see OBContext#setAdminMode(boolean)
    */
   public static List<User> getActiveUsers() {
     try {
       OBContext.setAdminMode(true);
-      OBCriteria<User> criteria = OBDal.getInstance().createCriteria(User.class);
-      criteria.addOrderBy(User.PROPERTY_USERNAME, true);
-
-      return criteria.list();
-    } catch (Exception e) {
-      throw new OBException(e);
+      OBCriteria<User> userOBCriteria = OBDal.getInstance().createCriteria(User.class);
+      userOBCriteria.addOrderBy(User.PROPERTY_USERNAME, true);
+      return userOBCriteria.list();
     } finally {
       OBContext.restorePreviousMode();
     }
   }
 
   /**
-   * Loads and retrieves tasks assigned to the specified users.
+   * Retrieves a list of Task entities assigned to the given list of users.
+   * <p>
+   * This method creates a criteria query to search for Task entities that have
+   * an assigned user matching one of the users in the given list. The query is
+   * executed and the resulting list of Task entities is returned.
+   * <p>
+   * Dependencies:
+   * <ul>
+   *   <li>OBDal: Used for creating a criteria query to search for the Task entities.</li>
+   *   <li>Restrictions: Applies a condition to filter the Task entities by their assigned user.</li>
+   * </ul>
    *
    * @param users
-   *     the list of users for whom tasks need to be preloaded
-   * @return a list of tasks assigned to the given users
+   *     The list of users to find assigned tasks for.
+   * @return A list of Task entities assigned to the users in the given list.
    */
   public static List<Task> preloadTasks(List<User> users) {
-    OBCriteria<Task> warehouseTaskCriteria = OBDal.getInstance().createCriteria(Task.class);
-    warehouseTaskCriteria.add(Restrictions.in(Task.PROPERTY_ASSIGNEDUSER, users));
-    return warehouseTaskCriteria.list();
+    OBCriteria<Task> taskOBCriteria = OBDal.getInstance().createCriteria(Task.class);
+    taskOBCriteria.add(Restrictions.in(Task.PROPERTY_ASSIGNEDUSER, users));
+    return taskOBCriteria.list();
   }
 
   /**
-   * Retrieves the status object based on the provided status identifier.
+   * Retrieves a Status entity based on its identifier.
    *
-   * @param statusIdentifier
-   *     the identifier of the status to be fetched
-   * @return the Status object that matches the given identifier, or null if no matching status is found
+   * <p>This method queries the database to find a single Status entity that matches
+   * the provided identifier. If no matching entity is found, it returns null.
+   *
+   * <p>Dependencies:
+   * <ul>
+   *   <li>OBDal: Used for creating a criteria query to search for the Status entity.</li>
+   *   <li>Restrictions: Applies a condition to filter the Status entity by its identifier.</li>
+   * </ul>
+   *
+   * @param identifier
+   *     The unique identifier of the Status to retrieve.
+   * @return The matching Status entity, or null if no match is found.
    */
-  public static Status getStatus(String statusIdentifier) {
-    OBCriteria<Status> criteria = OBDal.getInstance().createCriteria(Status.class);
-    criteria.add(Restrictions.eq(Status.PROPERTY_IDENTIFIER, statusIdentifier));
-    criteria.setMaxResults(1);
-    return (Status) criteria.uniqueResult();
+  public static Status getStatus(String identifier) {
+    OBCriteria<Status> statusOBCriteria = OBDal.getInstance().createCriteria(Status.class);
+    statusOBCriteria.add(Restrictions.eq(Status.PROPERTY_IDENTIFIER, identifier));
+    statusOBCriteria.setMaxResults(1);
+    return (Status) statusOBCriteria.uniqueResult();
   }
 
   /**
-   * Updates the round-robin index in the task type, ensuring it wraps around correctly.
+   * Updates the round-robin index for the given task type.
+   * <p>
+   * This method updates the round-robin index for the given task type by setting it to
+   * the given index value. If the given index value is out of range, it is normalized
+   * to the range [0, size) by resetting it to 0.
+   * <p>
+   * ### Dependencies:
+   * - `OBDal`: Handles database operations for updating task type data.
+   * - `TaskType`: Stores task type information and the round-robin index.
    *
    * @param taskType
-   *     the task type being updated
-   * @param currentIndex
-   *     the current index to update
+   *     the task type to update
+   * @param idx
+   *     the new index value
    * @param size
-   *     the total number of users available
+   *     the size of the round-robin list
    */
-  public static void updateRoundRobinIndex(TaskType taskType, int currentIndex, int size) {
-    if (currentIndex >= size) {
-      currentIndex = 0;
+  public static void updateRoundRobinIndex(TaskType taskType, int idx, int size) {
+    if (idx >= size) {
+      idx = 0;
     }
-    taskType.setRoundRobinIndex((long) currentIndex);
+    taskType.setRoundRobinIndex((long) idx);
     OBDal.getInstance().save(taskType);
     OBDal.getInstance().flush();
   }
 
   /**
-   * Validates and normalises a Debezium event so that downstream
-   * {@code Action}s can consume it consistently.
+   * Validates and normalizes the input JSON parameters for task processing.
    *
+   * <p>This method ensures that the required fields are present and correctly formatted
+   * in the provided JSON object, throwing an exception if any validation fails. It
+   * extracts the relevant fields and constructs a new JSON object with normalized data.
+   *
+   * <p>Validation checks include:
    * <ul>
-   *   <li>{@code table} – exact table name.</li>
-   *   <li>{@code verb}  – {@code create|update|delete}.</li>
-   *   <li>{@code data}  – original <b>after</b> JSON object.</li>
+   *   <li>Presence of a non-null "source" field with a valid "table" value.</li>
+   *   <li>Presence of an "operation" field, mapping its value to a corresponding
+   *   verb ("create", "update", or "delete").</li>
+   *   <li>Optional inclusion of a "before" field, if present in the parameters.</li>
+   *   <li>Mandatory inclusion of a non-null "after" field.</li>
    * </ul>
    *
    * @param parameters
-   *     raw Debezium-style JSON received from Kafka.
-   * @return a new {@link JSONObject} with the three keys above.
+   *     JSON object containing the input parameters to validate and normalize.
+   * @return A new JSON object with the validated and normalized parameters.
    * @throws JSONException
-   *     for malformed JSON.
+   *     If any JSON parsing errors occur.
    * @throws OBException
-   *     for missing required fields.
+   *     If any required field is missing or has an invalid value.
    */
   public static JSONObject validateAndNormalizeParameters(JSONObject parameters) throws JSONException {
 
-    JSONObject normalized = new JSONObject();
+    JSONObject out = new JSONObject();
 
     if (!parameters.has(TaskConstants.SOURCE) || parameters.isNull(TaskConstants.SOURCE)) {
       throw new OBException(OBMessageUtils.getI18NMessage("ETASK_MissingSource"));
     }
-    JSONObject source = parameters.getJSONObject(TaskConstants.SOURCE);
-    if (!source.has(TaskConstants.TABLE) || source.getString(TaskConstants.TABLE).isEmpty()) {
+    JSONObject src = parameters.getJSONObject(TaskConstants.SOURCE);
+    if (!src.has(TaskConstants.TABLE) || src.getString(TaskConstants.TABLE).isEmpty()) {
       throw new OBException(OBMessageUtils.getI18NMessage("ETASK_MissingTable"));
     }
-    normalized.put(TaskConstants.TABLE, source.getString(TaskConstants.TABLE));
+    out.put("table", src.getString(TaskConstants.TABLE));
 
     if (!parameters.has(TaskConstants.OPERATION) || parameters.getString(TaskConstants.OPERATION).isEmpty()) {
       throw new OBException(OBMessageUtils.getI18NMessage("ETASK_MissingVerb"));
@@ -183,174 +356,87 @@ public class TaskUtil {
     String verb;
     switch (parameters.getString(TaskConstants.OPERATION)) {
       case "c":
-        verb = "create";
+        verb = TaskConstants.TABLE_CREATE;
         break;
       case "u":
-        verb = "update";
+        verb = TaskConstants.TABLE_UPDATE;
         break;
       case "d":
-        verb = "delete";
+        verb = TaskConstants.TABLE_DELETE;
         break;
       default:
         throw new OBException(String.format(OBMessageUtils.messageBD("ETASK_InvalidDatabaseOperation"),
             parameters.getString(TaskConstants.OPERATION)));
     }
-    normalized.put("verb", verb);
+    out.put(TaskConstants.VERB, verb);
 
+    if (parameters.has(TaskConstants.BEFORE) && !parameters.isNull(TaskConstants.BEFORE)) {
+      out.put(TaskConstants.BEFORE, parameters.getJSONObject(TaskConstants.BEFORE));
+    }
     if (!parameters.has(TaskConstants.AFTER) || parameters.isNull(TaskConstants.AFTER)) {
       throw new OBException(OBMessageUtils.getI18NMessage("ETASK_MissingData"));
     }
-    JSONObject data = parameters.getJSONObject(TaskConstants.AFTER);
-    normalized.put("data", data);
+    out.put(TaskConstants.AFTER, parameters.getJSONObject(TaskConstants.AFTER));
 
-    return normalized;
+    return out;
   }
 
   /**
-   * Evaluates a JEXL expression against the JSON payload of the event.
-   * Any checked/unchecked exception is logged and treated as
-   * <i>filter not passed</i>.
-   *
-   * @param filter
-   *     filter expression stored in {@code etask_table.filter}.
-   * @param data
-   *     {@code after} section of the Debezium event.
-   * @return {@code true} if the expression returns <i>true</i>; {@code false} otherwise.
+   * Creates a new task according to the provided table rule, initial state, and input data.
+   * <p>
+   * ### Parameters:
+   * - `rule`: The table rule that triggered the task creation.
+   * - `initialState`: The initial state of the task.
+   * - `data`: The input data used to set the task's properties.
+   * <p>
+   * ### Functionality:
+   * - Creates a new task instance.
+   * - Sets the task type, status, and creation flag according to the provided rule and state.
+   * - Sets the client and organization based on the input data.
+   * - Sets the creation and update dates.
+   * - Sets the created and updated by fields to the admin user.
+   * <p>
+   * ### Throws:
+   * - `OBException`: If any error occurs during task creation.
    */
-  public static boolean validateFilter(String filter, JSONObject data) {
+  public static Task createTask(Table rule, State initialState, JSONObject data) {
     try {
-      JexlEngine engine = new JexlBuilder().create();
-      JexlContext ctx = new MapContext();
-      Iterator<String> it = data.keys();
-      while (it.hasNext()) {
-        String key = it.next();
-        ctx.set(key, data.get(key));
-      }
-      JexlExpression expr = engine.createExpression(filter);
-      Object result = expr.evaluate(ctx);
+      OBDal obd = OBDal.getInstance();
 
-      if (!(result instanceof Boolean)) {
-        log.warn("Filter '{}' did not return boolean: {}", filter, result);
-        return false;
-      }
-      return (Boolean) result;
+      Task newTask = OBProvider.getInstance().get(Task.class);
+      newTask.setTaskType(rule.getTaskType());
+      newTask.setStatus(initialState.getTaskStatus());
+      newTask.setCreatedAutomatically(true);
 
+      String clientId = getRequiredString(data, TaskConstants.AD_CLIENT_ATTR);
+      newTask.setClient(getRequiredEntity(Client.class, clientId, TaskConstants.AD_CLIENT_ATTR));
+
+      String orgId = getRequiredString(data, TaskConstants.AD_ORG_ATTR);
+      newTask.setOrganization(getRequiredEntity(Organization.class, orgId, TaskConstants.AD_ORG_ATTR));
+
+      User admin = obd.get(User.class, TaskConstants.ADMIN_USER);
+      newTask.setCreatedBy(admin);
+      newTask.setUpdatedBy(admin);
+      newTask.setCreationDate(new Date());
+      newTask.setUpdated(new Date());
+
+      return newTask;
     } catch (Exception e) {
-      log.error("Error evaluating filter '{}'", filter, e);
-      return false;
-    }
-  }
-
-  /**
-   * Executes the <i>advanced logic</i> {@link Action} referenced in
-   * {@code etask_table.advanced_logic_action_id}. Reflection is used
-   * only to access {@code setParameters(JSONObject)} (protected in
-   * the base class). The invoked action runs synchronously
-   * <strong>in the same transaction and thread</strong>.
-   *
-   * @param rule
-   *     configuration row from {@code etask_table}.
-   * @param data
-   *     full event payload to be passed to the advanced action.
-   * @return {@code true} if the advanced action finishes with
-   *     {@link Result.Type#SUCCESS}; {@code false} otherwise.
-   * @throws OBException
-   *     wraps any error thrown while executing the action.
-   */
-  @SuppressWarnings("java:S3011") // accessing protected member via reflection
-  public static boolean executeAdvancedLogic(Table rule, JSONObject data) {
-
-    if (rule.getAction() == null) {
-      log.debug("Rule without advanced action – automatically passed");
-      return true;
-    }
-    try {
-      Process proc = rule.getAction();
-      String className = proc.getJavaClassName();
-
-      if (StringUtils.isBlank(className)) {
-        log.warn("Process {} without javaClassName – rule skipped", proc.getName());
-        return false;
-      }
-
-      Class<?> clazz = Class.forName(className);
-      if (!Action.class.isAssignableFrom(clazz)) {
-        throw new OBException(String.format(OBMessageUtils.messageBD("ETASK_ProcessDoesNotAction"),
-            proc.getName()));
-      }
-      Action advAction = (Action) clazz.getDeclaredConstructor().newInstance();
-
-      /* inject parameters */
-      Method setParams = Action.class.getDeclaredMethod("setParameters", JSONObject.class);
-      setParams.setAccessible(true);
-      setParams.invoke(advAction, data);
-
-      ActionResult result = advAction.run(new Data(), new MutableBoolean(false));
-      return Result.Type.SUCCESS.equals(result.getType());
-
-    } catch (Exception e) {
-      log.error("Advanced logic failed", e);
       throw new OBException(e);
     }
   }
 
   /**
-   * Creates a new {@link Task} instance based on the given rule and initial state,
-   * using context data provided in a JSON object.
-   *
-   * @param rule
-   *     The table rule defining the task type.
-   * @param initialState
-   *     The initial state to assign to the task.
-   * @param data
-   *     A JSON object containing required context fields, including:
-   *     <ul>
-   *       <li><b>ad_client_id</b>: ID of the client</li>
-   *       <li><b>ad_org_id</b>: ID of the organization</li>
-   *     </ul>
-   * @return A newly created and initialized {@link Task}.
-   * @throws OBException
-   *     If required fields are missing or contain invalid values.
-   */
-  public static Task createTask(Table rule, State initialState, JSONObject data) {
-    try {
-      OBDal obdal = OBDal.getInstance();
-
-      Task task = OBProvider.getInstance().get(Task.class);
-      task.setTaskType(rule.getTaskType());
-      task.setStatus(initialState.getTaskStatus());
-      task.setCreatedAutomatically(true);
-
-      String clientId = getRequiredString(data, TaskConstants.AD_CLIENT_ATTR);
-      Client client = getRequiredEntity(Client.class, clientId, TaskConstants.AD_CLIENT_ATTR);
-      task.setClient(client);
-
-      String orgId = getRequiredString(data, TaskConstants.AD_ORG_ATTR);
-      Organization organization = getRequiredEntity(Organization.class, orgId, TaskConstants.AD_ORG_ATTR);
-      task.setOrganization(organization);
-
-      task.setCreatedBy(obdal.get(User.class, TaskConstants.ADMIN_USER));
-      task.setUpdatedBy(obdal.get(User.class, TaskConstants.ADMIN_USER));
-      task.setCreationDate(new Date());
-      task.setUpdated(new Date());
-
-      return task;
-    } catch (Exception e) {
-      log.error("Error creating task: {}", e.getMessage(), e);
-      throw new OBException(e.getMessage());
-    }
-  }
-
-  /**
-   * Retrieves a required string value from a {@link JSONObject}, ensuring the key is present and not null.
+   * Retrieves a required string attribute from the given JSON object.
+   * If the attribute is not present or has a null value, an exception is thrown.
    *
    * @param data
-   *     The JSON object containing the data.
+   *     the JSON object containing the attribute
    * @param key
-   *     The key to retrieve from the JSON.
-   * @return The string value associated with the given key.
-   * @throws OBException
-   *     If the key is missing or has a null value.
+   *     the key of the attribute to retrieve
+   * @return the value associated with the given key
+   * @throws JSONException
+   *     if the attribute is not present or has a null value
    */
   private static String getRequiredString(JSONObject data, String key) throws JSONException {
     if (!data.has(key) || data.isNull(key)) {
@@ -360,43 +446,44 @@ public class TaskUtil {
   }
 
   /**
-   * Retrieves an entity from the database and ensures it is not null.
+   * Retrieves a required entity from the database by its id.
+   * If the entity is not found, an exception is thrown.
    *
-   * @param <T>
-   *     The type of the expected entity.
-   * @param entityClass
-   *     The entity class.
+   * @param clazz
+   *     the class of the entity to retrieve
    * @param id
-   *     The ID of the entity to retrieve.
-   * @param fieldName
-   *     The name of the field being validated (used in error messages).
-   * @return The entity instance if found.
+   *     the id of the entity to retrieve
+   * @param field
+   *     the field name of the entity used in the error message
+   * @return the required entity
    * @throws OBException
-   *     If no entity is found with the given ID.
+   *     if the entity is not found
    */
-  private static <T> T getRequiredEntity(Class<T> entityClass, String id, String fieldName) {
-    T entity = OBDal.getInstance().get(entityClass, id);
-    if (entity == null) {
-      throw new OBException(String.format("Invalid %s: %s", fieldName, id));
+  private static <T> T getRequiredEntity(Class<T> clazz, String id, String field) {
+    T genericEntity = OBDal.getInstance().get(clazz, id);
+    if (genericEntity == null) {
+      throw new OBException(String.format(OBMessageUtils.messageBD("ETASK_EntityNotFound"), id, field));
     }
-    return entity;
+    return genericEntity;
   }
 
   /**
-   * Retrieves the initial state for a task type by selecting the state with the lowest sequence_no.
+   * Retrieves the initial state for a given task type.
+   * The initial state is the state with the lowest sequence number.
+   * If no state is found for the given task type, an exception is thrown.
    *
    * @param taskType
-   *     The TaskType entity
-   * @return The initial State entity
+   *     the task type to get the initial state for
+   * @return the initial state associated with the given task type
    * @throws OBException
-   *     if no initial state is found
+   *     if no state is found for the given task type
    */
   public static State getInitialState(TaskType taskType) {
-    OBCriteria<State> statusCriteria = OBDal.getInstance().createCriteria(State.class);
-    statusCriteria.add(Restrictions.eq(State.PROPERTY_TASKTYPE, taskType));
-    statusCriteria.addOrderBy(State.PROPERTY_SEQUENCENO, true);
-    statusCriteria.setMaxResults(1);
-    State state = (State) statusCriteria.uniqueResult();
+    OBCriteria<State> stateOBCriteria = OBDal.getInstance().createCriteria(State.class);
+    stateOBCriteria.add(Restrictions.eq(State.PROPERTY_TASKTYPE, taskType));
+    stateOBCriteria.addOrderBy(State.PROPERTY_SEQUENCENO, true);
+    stateOBCriteria.setMaxResults(1);
+    State state = (State) stateOBCriteria.uniqueResult();
     if (state == null) {
       throw new OBException(OBMessageUtils.getI18NMessage("ETASK_NoInitialState"));
     }
@@ -404,56 +491,110 @@ public class TaskUtil {
   }
 
   /**
-   * Retrieves the Etendo AD_Table record that matches the given physical database table name.
+   * Retrieves the {@link org.openbravo.model.ad.datamodel.Table} corresponding to the specified
+   * table name.
+   *
+   * <p>This method searches for a table in the database using a case-insensitive match with the
+   * provided table name. It returns the first matching table, or null if no match is found.
    *
    * @param tableName
-   *     The physical database table name from the event.
-   * @return The matching AD_Table object, or null if not found.
+   *     The name of the table to retrieve.
+   * @return The matching table, or null if no match is found.
    */
   public static org.openbravo.model.ad.datamodel.Table getADTable(String tableName) {
-    OBCriteria<org.openbravo.model.ad.datamodel.Table> tableCriteria =
+    OBCriteria<org.openbravo.model.ad.datamodel.Table> tableOBCriteria =
         OBDal.getInstance().createCriteria(org.openbravo.model.ad.datamodel.Table.class);
-    tableCriteria.add(Restrictions.ilike(org.openbravo.model.ad.datamodel.Table.PROPERTY_DBTABLENAME, tableName));
-    tableCriteria.setMaxResults(1);
-
-    return (org.openbravo.model.ad.datamodel.Table) tableCriteria.uniqueResult();
+    tableOBCriteria.add(Restrictions.ilike(org.openbravo.model.ad.datamodel.Table.PROPERTY_DBTABLENAME, tableName));
+    tableOBCriteria.setMaxResults(1);
+    return (org.openbravo.model.ad.datamodel.Table) tableOBCriteria.uniqueResult();
   }
 
   /**
-   * Retrieves the internal search key (event value) for a given operation verb, based on
-   * the "Table Events" reference list.
+   * Retrieves the search key of an event list entry based on the provided verb.
+   *
+   * <p>This method searches for an entry in the list associated with the reference
+   * defined by {@link TaskConstants#TABLE_EVENTS_REF} where the name matches the
+   * specified verb, ignoring case. It returns the search key of the first matching
+   * entry found, or null if no match is found.
    *
    * @param verb
-   *     The operation type (e.g., insert, update, delete) from the event.
-   * @return The search key corresponding to the verb, or null if not found.
+   *     The verb to match against the list entry names.
+   * @return The search key of the matching list entry, or null if no match is found.
    */
   public static String getEventValue(String verb) {
-    Reference tableEventsRef = OBDal.getInstance().get(Reference.class, TaskConstants.TABLE_EVENTS_REF);
-
-    OBCriteria<org.openbravo.model.ad.domain.List> eventCriteria =
+    Reference ref = OBDal.getInstance().get(Reference.class, TaskConstants.TABLE_EVENTS_REF);
+    OBCriteria<org.openbravo.model.ad.domain.List> listOBCriteria =
         OBDal.getInstance().createCriteria(org.openbravo.model.ad.domain.List.class);
-    eventCriteria.add(Restrictions.eq(org.openbravo.model.ad.domain.List.PROPERTY_REFERENCE, tableEventsRef));
-    eventCriteria.add(Restrictions.ilike(org.openbravo.model.ad.domain.List.PROPERTY_NAME, verb));
-    eventCriteria.setMaxResults(1);
-
-    org.openbravo.model.ad.domain.List event = (org.openbravo.model.ad.domain.List) eventCriteria.uniqueResult();
+    listOBCriteria.add(Restrictions.eq(org.openbravo.model.ad.domain.List.PROPERTY_REFERENCE, ref));
+    listOBCriteria.add(Restrictions.ilike(org.openbravo.model.ad.domain.List.PROPERTY_NAME, verb));
+    listOBCriteria.setMaxResults(1);
+    org.openbravo.model.ad.domain.List event = (org.openbravo.model.ad.domain.List) listOBCriteria.uniqueResult();
     return event != null ? event.getSearchKey() : null;
   }
 
   /**
-   * Retrieves all etask_table rules that match the specified table and event.
+   * Finds all matching {@link Table} rules based on the given
+   * {@link org.openbravo.model.ad.datamodel.Table} and event identifier.
    *
    * @param table
-   *     The AD_Table record the rules should apply to.
-   * @param eventValue
-   *     The internal event key (e.g., I, U, D) from the reference list.
-   * @return A list of matching Table rules, or an empty list if none found.
+   *     the table for which to find matching rules
+   * @param eventIdentifier
+   *     the event identifier to match
+   * @return a list of matching {@link Table} instances
    */
-  public static List<Table> getMatchingRules(org.openbravo.model.ad.datamodel.Table table, String eventValue) {
-    OBCriteria<Table> criteria = OBDal.getInstance().createCriteria(Table.class);
-    criteria.add(Restrictions.eq(Table.PROPERTY_TABLE, table));
-    criteria.add(Restrictions.eq(Table.PROPERTY_TABLEEVENTS, eventValue));
-    return criteria.list();
+  public static List<Table> getMatchingRules(org.openbravo.model.ad.datamodel.Table table, String eventIdentifier) {
+    OBCriteria<Table> tableOBCriteria = OBDal.getInstance().createCriteria(Table.class);
+    tableOBCriteria.add(Restrictions.eq(Table.PROPERTY_TABLE, table));
+    tableOBCriteria.add(Restrictions.eq(Table.PROPERTY_TABLEEVENTS, eventIdentifier));
+    return tableOBCriteria.list();
   }
 
+  /**
+   * Finds a state with the given task type ID and status identifier.
+   *
+   * @param statusId
+   *     the status identifier
+   * @param taskTypeId
+   *     the task type ID
+   * @return the matching state, or null if no match is found
+   */
+  public static State findStateByStatusId(String statusId, String taskTypeId) {
+    OBCriteria<State> c = OBDal.getInstance().createCriteria(State.class);
+    c.add(Restrictions.eq(State.PROPERTY_TASKTYPE,
+        OBDal.getInstance().get(TaskType.class, taskTypeId)));
+    c.createAlias(State.PROPERTY_TASKSTATUS, "st");
+    c.add(Restrictions.eq("st.id", statusId));
+    c.setMaxResults(1);
+    return (State) c.uniqueResult();
+  }
+
+  /**
+   * Executes state events associated with the given state and payload, collecting
+   * any initial Kafka topics configured for the jobs linked to these events.
+   *
+   * <p>This method retrieves all events associated with the provided state,
+   * ordered by sequence number. For each event, if a job is defined and has
+   * a non-blank initial topic, that topic is added to the list of topics.
+   *
+   * @param state
+   *     The {@link State} for which events should be executed.
+   * @param payload
+   *     JSON object containing additional event data, though not directly used
+   *     in this method.
+   * @return A list of initial topics associated with the jobs of the executed events.
+   */
+  public static List<String> runStateEvents(State state, JSONObject payload) {
+    List<String> topics = new ArrayList<>();
+    OBCriteria<Events> ev = OBDal.getInstance().createCriteria(Events.class);
+    ev.add(Restrictions.eq(Events.PROPERTY_STATE, state));
+    ev.addOrderBy(Events.PROPERTY_SEQUENCENO, true);
+
+    ev.list().forEach(e -> {
+      var job = e.getJob();
+      if (job != null && StringUtils.isNotBlank(job.getEtapInitialTopic())) {
+        topics.add(job.getEtapInitialTopic());
+      }
+    });
+    return topics;
+  }
 }
