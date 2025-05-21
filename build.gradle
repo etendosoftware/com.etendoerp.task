@@ -7,7 +7,7 @@
 */
 
 group          = "com.etendoerp"
-version        = "1.2.0"
+version        = "3.0.0"
 description    = "This module provides the possibility of defining generic tasks."
 ext.artifact   = "task"
 ext.repository = "https://maven.pkg.github.com/etendosoftware/com.etendoerp.essentials.extensions"
@@ -52,5 +52,5 @@ sourceSets {
 * Ex: implementation "com.sun.mail:javax.mail:1.6.2"
 */
 dependencies {
-    implementation('com.etendoerp.platform:etendo-core:[22.1.0,25.1.0)')
+    implementation('com.etendoerp.platform:etendo-core:[25.1.0,25.2.0)')
 }
