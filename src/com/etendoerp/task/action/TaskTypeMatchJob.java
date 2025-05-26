@@ -1,227 +1,238 @@
 package com.etendoerp.task.action;
 
+import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.mutable.MutableBoolean;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
+import org.openbravo.base.exception.OBException;
 import org.openbravo.dal.core.OBContext;
 import org.openbravo.dal.service.OBDal;
-import org.openbravo.erpCommon.utility.OBMessageUtils;
 
 import com.etendoerp.task.data.State;
 import com.etendoerp.task.data.Table;
 import com.etendoerp.task.data.Task;
+import com.etendoerp.task.utils.TaskConstants;
 import com.etendoerp.task.utils.TaskUtil;
 import com.smf.jobs.Action;
 import com.smf.jobs.ActionResult;
 import com.smf.jobs.Result;
 
 /**
- * Processes database events from Kafka topic default.public.*, validates them against rules in
- * etask_table using JEXL Engine for filter evaluation, applies advanced logic via OBUIAPP_Process,
- * creates tasks in etask_task, and returns a JSON response. Implements the validation chain:
- * event → filter → advanced logic → task creation, without depending on the validation hook (ETP-1530).
- * <p>
- * Requires the commons-jexl3 library (org.apache.commons:commons-jexl3:3.3) for filter evaluation.
+ * Job responsible for processing task type matching events in Etendo ERP.
+ *
+ * <p>This class implements a scheduled {@link com.smf.jobs.Action} that listens to events
+ * related to the ETASK_Task table and other business tables. Its main purpose is to
+ * interpret these events (create, update), apply configured rules, and generate
+ * tasks accordingly.
+ *
+ * <p>Main responsibilities include:
+ * <ul>
+ *   <li>Validating and normalizing incoming parameters received as JSON.</li>
+ *   <li>Applying matching rules for other tables and validating user-defined filters.</li>
+ *   <li>Creating tasks based on rule matches and triggering corresponding state transitions.</li>
+ *   <li>Publishing Kafka messages for processed events.</li>
+ * </ul>
+ *
+ * <p>Returns an {@link ActionResult} describing the outcome of execution, including
+ * triggered Kafka topics and the final state of any created or updated tasks.
+ *
+ * <p>This job extends {@link com.smf.jobs.Action}, allowing it to be executed
+ * via the SMF Jobs scheduler framework.
  */
 public class TaskTypeMatchJob extends Action {
+
   private static final Logger log = LogManager.getLogger(TaskTypeMatchJob.class);
 
-
   /**
-   * Executes the TaskTypeMatchJob to process a Debezium Kafka event, validate rules, apply advanced
-   * logic, and create tasks if applicable.
+   * Executes the task type matching logic for the given JSON parameters and whether the job is stopped.
+   * <p>
+   * The method validates and normalizes the input parameters, applies configured rules, creates tasks,
+   * triggers state transitions, and publishes Kafka messages for the resulting events.
+   * <p>
+   * On successful processing, an {@link ActionResult} is returned with details about the outcome,
+   * including triggered topics and the final task state.
    *
    * @param parameters
-   *     JSONObject containing the Debezium event (source, op, after)
+   *     JSON object containing event data, including the table name, and before/after statuses.
    * @param isStopped
-   *     MutableBoolean flag to indicate if the action should be stopped
-   * @return An ActionResult indicating the result of the action (SUCCESS or ERROR)
+   *     whether the job is stopped
+   * @return an {@link ActionResult} with information about the outcome
    */
   @Override
   protected ActionResult action(JSONObject parameters, MutableBoolean isStopped) {
-    ActionResult result = new ActionResult();
-    boolean success = false;
+
+    ActionResult actionResult = new ActionResult();
+    List<String> topics = new ArrayList<>();
+    boolean commit = false;
 
     try {
       OBContext.setAdminMode(true);
-      result.setType(Result.Type.SUCCESS);
 
-      JSONObject normalizedParams = TaskUtil.validateAndNormalizeParameters(parameters);
-      String tableName = normalizedParams.getString("table");
-      String verb = normalizedParams.getString("verb");
-      JSONObject data = normalizedParams.getJSONObject("data");
+      //Validation and normalization of parameters
+      JSONObject norm = TaskUtil.validateAndNormalizeParameters(parameters);
+      String table = norm.getString(TaskConstants.TABLE);
+      String verb = norm.getString(TaskConstants.VERB);
+      JSONObject after = norm.getJSONObject(TaskConstants.AFTER);
 
-      org.openbravo.model.ad.datamodel.Table table = TaskUtil.getADTable(tableName);
-      if (!validateTable(table, tableName, result)) {
-        return result;
+      //Logic for events in the ETASK_Task table
+      ActionResult taskTableResult = handleTaskTableEvents(table, verb, norm, after, topics, parameters);
+      if (taskTableResult != null) {
+        return taskTableResult;
       }
 
-      String eventValue = TaskUtil.getEventValue(verb);
-      if (!validateEvent(eventValue, verb, result)) {
-        return result;
+      // Section of code in charge of managing the other tables
+      var adTable = TaskUtil.getADTable(table);
+      String evKey = TaskUtil.getEventValue(verb);
+      List<Table> rules = TaskUtil.getMatchingRules(adTable, evKey);
+      List<JSONObject> created = new ArrayList<>();
+
+      for (Table rule : rules) {
+        if (!TaskUtil.validateFilter(rule.getFilter(), after)) {
+          continue;
+        }
+        if (!TaskUtil.executeAdvancedLogic(rule, after)) {
+          continue;
+        }
+
+        //The initial state is obtained
+        State init = TaskUtil.getInitialState(rule.getTaskType());
+
+        //Task creation
+        Task newTask = TaskUtil.createTask(rule, init, after);
+        OBDal.getInstance().save(newTask);
+        OBDal.getInstance().flush();
+
+        JSONObject taskInfo = new JSONObject();
+        taskInfo.put(TaskConstants.TASK, newTask.getId());
+        taskInfo.put(TaskConstants.STATE, newTask.getStatus().getId());
+        created.add(taskInfo);
+        topics.addAll(TaskUtil.runStateEvents(init));
+
+        commit = true;
       }
 
-      List<Table> tableEventRules = TaskUtil.getMatchingRules(table, eventValue);
-      if (tableEventRules.isEmpty()) {
-        result.setMessage(OBMessageUtils.getI18NMessage("ETASK_NoMatchingRules"));
-        return result;
-      }
-
-      boolean taskCreated = processRules(tableEventRules, data, tableName, result);
-
-      if (taskCreated) {
+      if (commit) {
         OBDal.getInstance().commitAndClose();
       }
+      actionResult.setType(Result.Type.SUCCESS);
+      actionResult.setMessage(outJson(topics, parameters, created).toString());
+      return actionResult;
 
-      success = true;
-
-    } catch (JSONException e) {
-      log.error("Error parsing JSON parameters: {}", e.getMessage(), e);
-      result.setType(Result.Type.ERROR);
-      result.setMessage("Invalid event data: " + e.getMessage());
     } catch (Exception e) {
-      log.error("Unexpected error in TaskTypeMatchJob: {}", e.getMessage(), e);
-      result.setType(Result.Type.ERROR);
-      result.setMessage(e.getMessage());
+      OBDal.getInstance().rollbackAndClose();
+      log.error("TaskTypeMatchJob error", e);
+      actionResult.setType(Result.Type.ERROR);
+      actionResult.setMessage(outJson(null, null, null).toString());
+      return actionResult;
     } finally {
-      if (!success) {
-        OBDal.getInstance().rollbackAndClose();
-      }
       OBContext.restorePreviousMode();
     }
+  }
 
+  /**
+   * Handles events in the ETASK_Task table.
+   *
+   * @param table
+   *     The table name of the event.
+   * @param verb
+   *     The operation (create, update, delete) of the event.
+   * @param norm
+   *     The normalized parameters of the event.
+   * @param after
+   *     The JSON object representing the after state of the event.
+   * @param topics
+   *     The list of Kafka topics to be published.
+   * @param parameters
+   *     The JSON object containing the input parameters of the job.
+   * @return an ActionResult indicating success or failure.
+   * @throws Exception
+   *     If any error occurs during the execution of this method.
+   */
+  private ActionResult handleTaskTableEvents(String table, String verb, JSONObject norm, JSONObject after,
+      List<String> topics, JSONObject parameters) throws Exception {
+    if (!StringUtils.equalsIgnoreCase(TaskConstants.TASK_TABLENAME, table)) {
+      return null;
+    }
+
+    ActionResult result = new ActionResult();
+    boolean isCreate = StringUtils.equalsIgnoreCase(TaskConstants.TABLE_CREATE, verb);
+    boolean isUpdate = StringUtils.equalsIgnoreCase(TaskConstants.TABLE_UPDATE, verb);
+
+    if (isCreate) {
+      boolean auto = StringUtils.equalsIgnoreCase(after.optString(TaskConstants.CREATED_AUTOMATICALLY, "Y"), "Y");
+      if (!auto) {
+        State st = TaskUtil.findStateByStatusId(
+            after.getString(TaskConstants.STATUS),
+            after.getString(TaskConstants.TASK_TYPE_ID_PROPERTY)
+        );
+        topics.addAll(TaskUtil.runStateEvents(st));
+      }
+    } else if (isUpdate) {
+      JSONObject before = norm.optJSONObject(TaskConstants.BEFORE);
+      String oldSt = before == null ? null : before.optString(TaskConstants.STATUS, null);
+      String newSt = after.getString(TaskConstants.STATUS);
+      if (!StringUtils.equals(newSt, oldSt)) {
+        State st = TaskUtil.findStateByStatusId(
+            newSt,
+            after.getString(TaskConstants.TASK_TYPE_ID_PROPERTY)
+        );
+        topics.addAll(TaskUtil.runStateEvents(st));
+      }
+    }
+
+    result.setType(Result.Type.SUCCESS);
+    result.setMessage(outJson(topics, parameters, null).toString());
     return result;
   }
 
   /**
-   * Verifies that the given AD_Table record matches the provided table name.
-   * If no matching table is found, logs a warning and sets the result message.
+   * Converts the given input into a JSON object with three fields:
+   * <ul>
+   *   <li>next - a single string or an array of strings with the next topics to be published.</li>
+   *   <li>message - the message associated with the task creation, or null.</li>
+   *   <li>state - an array of objects with the task and state information, or null.</li>
+   * </ul>
+   * <p>
+   * This method is used to create the output JSON object from the action. The method
+   * takes care of converting the input into a JSON object and handling any exceptions
+   * that may occur during the conversion.
    *
-   * @param table
-   *     the AD_Table record to be validated
-   * @param tableName
-   *     the physical database table name to be matched
-   * @param result
-   *     the ActionResult to store the result message
-   * @return {@code true} if the table matches, {@code false} otherwise
+   * @param next
+   *     the list of topics to be published, or null.
+   * @param msg
+   *     the message associated with the task creation, or null.
+   * @param tasksInfo
+   *     the list of objects with the task and state information, or null.
+   * @return the JSON object with the information.
    */
-  private boolean validateTable(org.openbravo.model.ad.datamodel.Table table, String tableName, ActionResult result) {
-    if (table == null) {
-      log.warn("No matching table event for table={}", tableName);
-      result.setMessage(OBMessageUtils.getI18NMessage("ETASK_NoTableMatching"));
-      return false;
-    }
-    log.debug("Table found: id={}, dbTableName={}", table.getId(), table.getDBTableName());
-    return true;
-  }
-
-  /**
-   * Verifies that the given event value (search key) matches the provided verb.
-   * If no matching event is found, logs a warning and sets the result message.
-   *
-   * @param eventValue
-   *     internal search key (event value) from the reference list.
-   * @param verb
-   *     the operation type (e.g., insert, update, delete) from the event.
-   * @param result
-   *     ActionResult instance to fill with the result and message.
-   * @return {@code true} if the event value matches the verb; {@code false} otherwise.
-   */
-  private boolean validateEvent(String eventValue, String verb, ActionResult result) {
-    if (eventValue == null) {
-      log.warn("No matching table event for verb={}", verb);
-      result.setMessage(OBMessageUtils.getI18NMessage("ETASK_NoTableEventMatching"));
-      return false;
-    }
-    log.debug("Event validated: verb={}, searchKey={}", verb, eventValue);
-    return true;
-  }
-
-  /**
-   * Iterates over the rules matching the given table and event, applies JEXL filter evaluation, executes
-   * advanced logic actions, creates tasks in etask_task, and appends a JSON response message.
-   * A task is created for each rule that passes filter evaluation and advanced logic validation.
-   * If any rule throws an error, the error message is appended to the response.
-   *
-   * @param tableEventRules
-   *     List of Table rules matching the given table and event.
-   * @param data
-   *     full event payload to be passed to the advanced action.
-   * @param tableName
-   *     physical database table name of the event.
-   * @param result
-   *     ActionResult instance to fill with the result and message.
-   * @return {@code true} if at least one task was created; {@code false} otherwise.
-   */
-  private boolean processRules(List<Table> tableEventRules, JSONObject data, String tableName, ActionResult result) {
-    boolean taskCreated = false;
-    StringBuilder msg = new StringBuilder();
-
-    for (Table rule : tableEventRules) {
-      try {
-        log.debug("Processing rule: table={}, event={}, filter={}, action={}", rule.getTable().getDBTableName(),
-            rule.getTableEvents(), rule.getFilter(), rule.getAction() != null ? rule.getAction().getId() : "none");
-
-        if (!filterPasses(rule, data)) {
-          log.debug("Rule skipped: filter validation failed");
-          continue;
-        }
-
-        if (!TaskUtil.executeAdvancedLogic(rule, data)) {
-          log.debug("Rule skipped: advanced logic validation failed");
-          continue;
-        }
-
-        State initialState = TaskUtil.getInitialState(rule.getTaskType());
-        Task task = TaskUtil.createTask(rule, initialState, data);
-        log.debug("Task created: client={}, org={}, taskType={}", task.getClient().getId(),
-            task.getOrganization().getId(), task.getTaskType().getId());
-
-        OBDal.getInstance().save(task);
-        OBDal.getInstance().flush();
-        taskCreated = true;
-
-        msg.append(
-            String.format(OBMessageUtils.messageBD("ETASK_TaskCreatedSuccessfully"), rule.getTaskType().getIdentifier(),
-                tableName)).append("\n");
-      } catch (Exception ruleEx) {
-        log.error("Error processing rule [{}]: {}", rule.getIdentifier(), ruleEx.getMessage(), ruleEx);
-        msg.append(String.format(OBMessageUtils.messageBD("ETASK_ErrorProcessingRule"), rule.getIdentifier(),
-            ruleEx.getMessage())).append("\n");
+  private JSONObject outJson(List<String> next, JSONObject msg, List<JSONObject> tasksInfo) {
+    JSONObject resultJsonObj = new JSONObject();
+    try {
+      if (next == null || next.isEmpty()) {
+        resultJsonObj.put(TaskConstants.NEXT, JSONObject.NULL);
+      } else if (next.size() == 1) {
+        resultJsonObj.put(TaskConstants.NEXT, next.get(0));
+      } else {
+        resultJsonObj.put(TaskConstants.NEXT, next);
       }
+      resultJsonObj.put(TaskConstants.MESSAGE, msg == null ? JSONObject.NULL : msg);
+      resultJsonObj.put(TaskConstants.STATE, tasksInfo == null || tasksInfo.isEmpty()
+          ? JSONObject.NULL
+          : new org.codehaus.jettison.json.JSONArray(tasksInfo));
+    } catch (Exception e) {
+      throw new OBException(e);
     }
-
-    result.setMessage(msg.toString());
-    return taskCreated;
+    return resultJsonObj;
   }
 
   /**
-   * Evaluates the JEXL filter expression in the given rule against the provided JSON data.
-   * If the filter is empty or null, this method returns {@code true}.
+   * Returns the class type of the input list elements.
    *
-   * @param rule
-   *     the rule containing the filter expression
-   * @param data
-   *     the JSON object to be evaluated
-   * @return {@code true} if the filter expression evaluates to {@code true}, {@code false} otherwise.
-   */
-  private boolean filterPasses(Table rule, JSONObject data) {
-    if (rule.getFilter() != null && !rule.getFilter().isEmpty()) {
-      boolean valid = TaskUtil.validateFilter(rule.getFilter(), data);
-      log.debug("Filter result: {}", valid);
-      return valid;
-    }
-    return true;
-  }
-
-  /**
-   * Specifies the expected input class for the action.
-   *
-   * @return The Class of the expected input (JSONObject)
+   * @return Class type of JSONObject.
    */
   @Override
   protected Class<?> getInputClass() {

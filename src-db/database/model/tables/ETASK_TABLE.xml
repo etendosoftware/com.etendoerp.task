@@ -53,9 +53,6 @@
         <default/>
         <onCreateDefault/>
       </column>
-      <foreign-key foreignTable="OBUIAPP_PROCESS" name="ETASK_STATE_ACTION_FK">
-        <reference local="ACTION" foreign="OBUIAPP_PROCESS_ID"/>
-      </foreign-key>
       <foreign-key foreignTable="AD_CLIENT" name="ETASK_TABLE_AD_CLIENT_FK">
         <reference local="AD_CLIENT_ID" foreign="AD_CLIENT_ID"/>
       </foreign-key>
