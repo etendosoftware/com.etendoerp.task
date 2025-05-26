@@ -79,31 +79,9 @@ public class TaskTypeMatchJob extends Action {
       JSONObject after = norm.getJSONObject(TaskConstants.AFTER);
 
       //Logic for events in the ETASK_Task table
-      if (StringUtils.equalsIgnoreCase(TaskConstants.TASK_TABLENAME, table)) {
-
-        boolean isCreate = StringUtils.equalsIgnoreCase(TaskConstants.TABLE_CREATE, verb);
-        boolean isUpdate = StringUtils.equalsIgnoreCase(TaskConstants.TABLE_UPDATE, verb);
-
-        if (isCreate) {
-          boolean auto = StringUtils.equalsIgnoreCase(after.optString(TaskConstants.CREATED_AUTOMATICALLY, "Y"), "Y");
-          if (!auto) {
-            State st = TaskUtil.findStateByStatusId(after.getString(TaskConstants.STATUS),
-                after.getString(TaskConstants.TASK_TYPE_ID_PROPERTY));
-            topics.addAll(TaskUtil.runStateEvents(st, norm));
-          }
-        } else if (isUpdate) {
-          JSONObject before = norm.optJSONObject(TaskConstants.BEFORE);
-          String oldSt = before == null ? null : before.optString(TaskConstants.STATUS, null);
-          String newSt = after.getString(TaskConstants.STATUS);
-          if (!StringUtils.equals(newSt, oldSt)) {
-            State st = TaskUtil.findStateByStatusId(newSt,
-                after.getString(TaskConstants.TASK_TYPE_ID_PROPERTY));
-            topics.addAll(TaskUtil.runStateEvents(st, norm));
-          }
-        }
-        actionResult.setType(Result.Type.SUCCESS);
-        actionResult.setMessage(outJson(topics, parameters, null).toString());
-        return actionResult;
+      ActionResult taskTableResult = handleTaskTableEvents(table, verb, norm, after, topics, parameters);
+      if (taskTableResult != null) {
+        return taskTableResult;
       }
 
       // Section of code in charge of managing the other tables
@@ -132,7 +110,7 @@ public class TaskTypeMatchJob extends Action {
         taskInfo.put(TaskConstants.TASK, newTask.getId());
         taskInfo.put(TaskConstants.STATE, newTask.getStatus().getId());
         created.add(taskInfo);
-        topics.addAll(TaskUtil.runStateEvents(init, norm));
+        topics.addAll(TaskUtil.runStateEvents(init));
 
         commit = true;
       }
@@ -153,6 +131,62 @@ public class TaskTypeMatchJob extends Action {
     } finally {
       OBContext.restorePreviousMode();
     }
+  }
+
+  /**
+   * Handles events in the ETASK_Task table.
+   *
+   * @param table
+   *     The table name of the event.
+   * @param verb
+   *     The operation (create, update, delete) of the event.
+   * @param norm
+   *     The normalized parameters of the event.
+   * @param after
+   *     The JSON object representing the after state of the event.
+   * @param topics
+   *     The list of Kafka topics to be published.
+   * @param parameters
+   *     The JSON object containing the input parameters of the job.
+   * @return an ActionResult indicating success or failure.
+   * @throws Exception
+   *     If any error occurs during the execution of this method.
+   */
+  private ActionResult handleTaskTableEvents(String table, String verb, JSONObject norm, JSONObject after,
+      List<String> topics, JSONObject parameters) throws Exception {
+    if (!StringUtils.equalsIgnoreCase(TaskConstants.TASK_TABLENAME, table)) {
+      return null;
+    }
+
+    ActionResult result = new ActionResult();
+    boolean isCreate = StringUtils.equalsIgnoreCase(TaskConstants.TABLE_CREATE, verb);
+    boolean isUpdate = StringUtils.equalsIgnoreCase(TaskConstants.TABLE_UPDATE, verb);
+
+    if (isCreate) {
+      boolean auto = StringUtils.equalsIgnoreCase(after.optString(TaskConstants.CREATED_AUTOMATICALLY, "Y"), "Y");
+      if (!auto) {
+        State st = TaskUtil.findStateByStatusId(
+            after.getString(TaskConstants.STATUS),
+            after.getString(TaskConstants.TASK_TYPE_ID_PROPERTY)
+        );
+        topics.addAll(TaskUtil.runStateEvents(st));
+      }
+    } else if (isUpdate) {
+      JSONObject before = norm.optJSONObject(TaskConstants.BEFORE);
+      String oldSt = before == null ? null : before.optString(TaskConstants.STATUS, null);
+      String newSt = after.getString(TaskConstants.STATUS);
+      if (!StringUtils.equals(newSt, oldSt)) {
+        State st = TaskUtil.findStateByStatusId(
+            newSt,
+            after.getString(TaskConstants.TASK_TYPE_ID_PROPERTY)
+        );
+        topics.addAll(TaskUtil.runStateEvents(st));
+      }
+    }
+
+    result.setType(Result.Type.SUCCESS);
+    result.setMessage(outJson(topics, parameters, null).toString());
+    return result;
   }
 
   /**

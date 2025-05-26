@@ -140,7 +140,6 @@ public final class TaskUtil {
       Action act = (Action) clazz.getDeclaredConstructor().newInstance();
 
       Method setParams = Action.class.getDeclaredMethod("setParameters", JSONObject.class);
-      setParams.setAccessible(true);
       setParams.invoke(act, payload);
 
       ActionResult ar = act.run(new Data(), new MutableBoolean(false));
@@ -148,17 +147,35 @@ public final class TaskUtil {
       JSONObject msg = null;
       String raw = ar.getMessage();
       if (raw != null && !raw.isBlank()) {
-        try {
-          msg = new JSONObject(raw);
-        } catch (JSONException je) {
-          log.debug("Action {} returned plain text message: {}", className, raw);
-        }
+        msg = safeParseJson(raw, className);
       }
       return new ActionOutcome(Result.Type.SUCCESS.equals(ar.getType()), msg);
 
     } catch (Exception e) {
       log.error("Error running Action {}", className, e);
       throw new OBException(e);
+    }
+  }
+
+/**
+ * Safely parses a raw string into a JSON object.
+ *
+ * <p>This method attempts to convert the given raw string into a
+ * {@link JSONObject}. If the string cannot be parsed as JSON, it logs
+ * a debug message and returns null.
+ *
+ * @param raw
+ *     the raw string to parse
+ * @param className
+ *     the name of the class invoking this method, used for logging purposes
+ * @return the parsed JSON object, or null if parsing fails
+ */
+  private static JSONObject safeParseJson(String raw, String className) {
+    try {
+      return new JSONObject(raw);
+    } catch (JSONException je) {
+      log.debug("Action {} returned plain text message: {}", className, raw);
+      return null;
     }
   }
 
@@ -348,26 +365,19 @@ public final class TaskUtil {
     if (!src.has(TaskConstants.TABLE) || src.getString(TaskConstants.TABLE).isEmpty()) {
       throw new OBException(OBMessageUtils.getI18NMessage("ETASK_MissingTable"));
     }
-    out.put("table", src.getString(TaskConstants.TABLE));
+    out.put(TaskConstants.TABLE, src.getString(TaskConstants.TABLE));
 
     if (!parameters.has(TaskConstants.OPERATION) || parameters.getString(TaskConstants.OPERATION).isEmpty()) {
       throw new OBException(OBMessageUtils.getI18NMessage("ETASK_MissingVerb"));
     }
-    String verb;
-    switch (parameters.getString(TaskConstants.OPERATION)) {
-      case "c":
-        verb = TaskConstants.TABLE_CREATE;
-        break;
-      case "u":
-        verb = TaskConstants.TABLE_UPDATE;
-        break;
-      case "d":
-        verb = TaskConstants.TABLE_DELETE;
-        break;
-      default:
-        throw new OBException(String.format(OBMessageUtils.messageBD("ETASK_InvalidDatabaseOperation"),
-            parameters.getString(TaskConstants.OPERATION)));
-    }
+    String operation = parameters.getString(TaskConstants.OPERATION);
+    String verb = switch (operation) {
+      case "c" -> TaskConstants.TABLE_CREATE;
+      case "u" -> TaskConstants.TABLE_UPDATE;
+      case "d" -> TaskConstants.TABLE_DELETE;
+      default -> throw new OBException(String.format(
+          OBMessageUtils.messageBD("ETASK_InvalidDatabaseOperation"), operation));
+    };
     out.put(TaskConstants.VERB, verb);
 
     if (parameters.has(TaskConstants.BEFORE) && !parameters.isNull(TaskConstants.BEFORE)) {
@@ -382,22 +392,24 @@ public final class TaskUtil {
   }
 
   /**
-   * Creates a new task according to the provided table rule, initial state, and input data.
+   * Creates a new task based on the given rule and state.
    * <p>
-   * ### Parameters:
-   * - `rule`: The table rule that triggered the task creation.
-   * - `initialState`: The initial state of the task.
-   * - `data`: The input data used to set the task's properties.
+   * This method creates a new task with the given task type, status, and state.
+   * It also sets the client and organization based on the JSON object provided
+   * and sets the created by and updated by fields to the admin user.
    * <p>
-   * ### Functionality:
-   * - Creates a new task instance.
-   * - Sets the task type, status, and creation flag according to the provided rule and state.
-   * - Sets the client and organization based on the input data.
-   * - Sets the creation and update dates.
-   * - Sets the created and updated by fields to the admin user.
-   * <p>
-   * ### Throws:
-   * - `OBException`: If any error occurs during task creation.
+   * If any required attribute is not present in the given JSON object, an
+   * exception is thrown.
+   *
+   * @param rule
+   *     the table containing the task type, status, and state
+   * @param initialState
+   *     the initial state of the task
+   * @param data
+   *     the JSON object containing the required attributes
+   * @return the newly created task
+   * @throws OBException
+   *     if any required attribute is not present in the given JSON object
    */
   public static Task createTask(Table rule, State initialState, JSONObject data) {
     try {
@@ -417,8 +429,6 @@ public final class TaskUtil {
       User admin = obd.get(User.class, TaskConstants.ADMIN_USER);
       newTask.setCreatedBy(admin);
       newTask.setUpdatedBy(admin);
-      newTask.setCreationDate(new Date());
-      newTask.setUpdated(new Date());
 
       return newTask;
     } catch (Exception e) {
@@ -559,13 +569,13 @@ public final class TaskUtil {
    * @return the matching state, or null if no match is found
    */
   public static State findStateByStatusId(String statusId, String taskTypeId) {
-    OBCriteria<State> c = OBDal.getInstance().createCriteria(State.class);
-    c.add(Restrictions.eq(State.PROPERTY_TASKTYPE,
+    OBCriteria<State> stateOBCriteria = OBDal.getInstance().createCriteria(State.class);
+    stateOBCriteria.add(Restrictions.eq(State.PROPERTY_TASKTYPE,
         OBDal.getInstance().get(TaskType.class, taskTypeId)));
-    c.createAlias(State.PROPERTY_TASKSTATUS, "st");
-    c.add(Restrictions.eq("st.id", statusId));
-    c.setMaxResults(1);
-    return (State) c.uniqueResult();
+    stateOBCriteria.createAlias(State.PROPERTY_TASKSTATUS, "st");
+    stateOBCriteria.add(Restrictions.eq("st.id", statusId));
+    stateOBCriteria.setMaxResults(1);
+    return (State) stateOBCriteria.uniqueResult();
   }
 
   /**
@@ -578,18 +588,15 @@ public final class TaskUtil {
    *
    * @param state
    *     The {@link State} for which events should be executed.
-   * @param payload
-   *     JSON object containing additional event data, though not directly used
-   *     in this method.
    * @return A list of initial topics associated with the jobs of the executed events.
    */
-  public static List<String> runStateEvents(State state, JSONObject payload) {
+  public static List<String> runStateEvents(State state) {
     List<String> topics = new ArrayList<>();
-    OBCriteria<Events> ev = OBDal.getInstance().createCriteria(Events.class);
-    ev.add(Restrictions.eq(Events.PROPERTY_STATE, state));
-    ev.addOrderBy(Events.PROPERTY_SEQUENCENO, true);
+    OBCriteria<Events> eventsOBCriteria = OBDal.getInstance().createCriteria(Events.class);
+    eventsOBCriteria.add(Restrictions.eq(Events.PROPERTY_STATE, state));
+    eventsOBCriteria.addOrderBy(Events.PROPERTY_SEQUENCENO, true);
 
-    ev.list().forEach(e -> {
+    eventsOBCriteria.list().forEach(e -> {
       var job = e.getJob();
       if (job != null && StringUtils.isNotBlank(job.getEtapInitialTopic())) {
         topics.add(job.getEtapInitialTopic());
