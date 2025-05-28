@@ -80,6 +80,14 @@ public class RoundRobinByWorkloadStrategy implements UserAvailabilityStrategy {
     return selectedUser;
   }
 
+  /**
+   * Computes the number of open tasks assigned to each user.
+   *
+   * @param allTasks
+   *     the list of tasks to be assigned
+   * @return a map where the keys are the users and the values are the
+   *     number of open tasks assigned to each user
+   */
   private Map<User, Long> computeOpenTasksByUser(List<Task> allTasks) {
     Status pendingStatus = TaskUtil.getStatus("PE");
     Status inProgressStatus = TaskUtil.getStatus("IP");
