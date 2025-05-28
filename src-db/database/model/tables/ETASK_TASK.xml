@@ -49,6 +49,10 @@
         <default><![CDATA[N]]></default>
         <onCreateDefault/>
       </column>
+      <column name="EVENT_JSONINFO" primaryKey="false" required="false" type="CLOB" size="4000" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
       <foreign-key foreignTable="AD_USER" name="ETASK_TASK_ASSGND_USER">
         <reference local="ASSIGNED_USER" foreign="AD_USER_ID"/>
       </foreign-key>
