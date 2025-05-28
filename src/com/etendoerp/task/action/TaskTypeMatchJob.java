@@ -102,7 +102,7 @@ public class TaskTypeMatchJob extends Action {
         State init = TaskUtil.getInitialState(rule.getTaskType());
 
         //Task creation
-        Task newTask = TaskUtil.createTask(rule, init, after);
+        Task newTask = TaskUtil.createTask(rule, init, after, norm, true);
         OBDal.getInstance().save(newTask);
         OBDal.getInstance().flush();
 

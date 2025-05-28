@@ -254,6 +254,29 @@ The expression must follow Openbravo’s DynamicExpressionParser syntax. You can
 <!--C743DAEFEB6D4EBC81B102220E2C12B5-->  <ISGLOSSARY><![CDATA[N]]></ISGLOSSARY>
 <!--C743DAEFEB6D4EBC81B102220E2C12B5--></AD_ELEMENT>
 
+<!--C7B8DAD34E10498EB9C5177FE175D3EA--><AD_ELEMENT>
+<!--C7B8DAD34E10498EB9C5177FE175D3EA-->  <AD_ELEMENT_ID><![CDATA[C7B8DAD34E10498EB9C5177FE175D3EA]]></AD_ELEMENT_ID>
+<!--C7B8DAD34E10498EB9C5177FE175D3EA-->  <AD_CLIENT_ID><![CDATA[0]]></AD_CLIENT_ID>
+<!--C7B8DAD34E10498EB9C5177FE175D3EA-->  <AD_ORG_ID><![CDATA[0]]></AD_ORG_ID>
+<!--C7B8DAD34E10498EB9C5177FE175D3EA-->  <ISACTIVE><![CDATA[Y]]></ISACTIVE>
+<!--C7B8DAD34E10498EB9C5177FE175D3EA-->  <COLUMNNAME><![CDATA[Event_Jsoninfo]]></COLUMNNAME>
+<!--C7B8DAD34E10498EB9C5177FE175D3EA-->  <NAME><![CDATA[Event Jsoninfo]]></NAME>
+<!--C7B8DAD34E10498EB9C5177FE175D3EA-->  <PRINTNAME><![CDATA[Event Jsoninfo]]></PRINTNAME>
+<!--C7B8DAD34E10498EB9C5177FE175D3EA-->  <DESCRIPTION><![CDATA[Stores the full JSON payload that triggered the automatic task, or user-supplied parameter JSON for tasks created manually (Created Automatically = N), enabling complete workflow audit.]]></DESCRIPTION>
+<!--C7B8DAD34E10498EB9C5177FE175D3EA-->  <HELP><![CDATA[This field keeps a JSON document related to the task’s origin:
+-Automatic tasks – the Debezium/Kafka event (before, after, op, source, …) that matched the Task Type rule.
+-Manual tasks – any parameter JSON entered by the user or UI when Created Automatically = N.
+
+Use it to:
+-Inspect the exact data change or parameters that launched the workflow.
+-Debug filter or advanced-logic conditions.
+-Reproduce the context when re-processing tasks.
+
+The value is set on task creation and is rarely modified afterwards. Stored as plain text (JSON format); copy it to an external viewer for easier reading.]]></HELP>
+<!--C7B8DAD34E10498EB9C5177FE175D3EA-->  <AD_MODULE_ID><![CDATA[D579A9E3954F4679B34D63E7B3F9E5A4]]></AD_MODULE_ID>
+<!--C7B8DAD34E10498EB9C5177FE175D3EA-->  <ISGLOSSARY><![CDATA[N]]></ISGLOSSARY>
+<!--C7B8DAD34E10498EB9C5177FE175D3EA--></AD_ELEMENT>
+
 <!--CB0A079C0C5646A6BB259056387A3754--><AD_ELEMENT>
 <!--CB0A079C0C5646A6BB259056387A3754-->  <AD_ELEMENT_ID><![CDATA[CB0A079C0C5646A6BB259056387A3754]]></AD_ELEMENT_ID>
 <!--CB0A079C0C5646A6BB259056387A3754-->  <AD_CLIENT_ID><![CDATA[0]]></AD_CLIENT_ID>

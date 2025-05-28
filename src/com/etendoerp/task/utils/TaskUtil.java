@@ -2,7 +2,6 @@ package com.etendoerp.task.utils;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
@@ -157,19 +156,19 @@ public final class TaskUtil {
     }
   }
 
-/**
- * Safely parses a raw string into a JSON object.
- *
- * <p>This method attempts to convert the given raw string into a
- * {@link JSONObject}. If the string cannot be parsed as JSON, it logs
- * a debug message and returns null.
- *
- * @param raw
- *     the raw string to parse
- * @param className
- *     the name of the class invoking this method, used for logging purposes
- * @return the parsed JSON object, or null if parsing fails
- */
+  /**
+   * Safely parses a raw string into a JSON object.
+   *
+   * <p>This method attempts to convert the given raw string into a
+   * {@link JSONObject}. If the string cannot be parsed as JSON, it logs
+   * a debug message and returns null.
+   *
+   * @param raw
+   *     the raw string to parse
+   * @param className
+   *     the name of the class invoking this method, used for logging purposes
+   * @return the parsed JSON object, or null if parsing fails
+   */
   private static JSONObject safeParseJson(String raw, String className) {
     try {
       return new JSONObject(raw);
@@ -391,34 +390,47 @@ public final class TaskUtil {
     return out;
   }
 
+
   /**
-   * Creates a new task based on the given rule and state.
+   * Creates a new task with the given task type, initial state, and additional data.
    * <p>
-   * This method creates a new task with the given task type, status, and state.
-   * It also sets the client and organization based on the JSON object provided
-   * and sets the created by and updated by fields to the admin user.
+   * The task is created with the given task type, initial status, and the information
+   * provided in the data map. The task is also marked as created automatically if
+   * the given flag is set to true. The raw event JSON is stored in the task's
+   * {@link Task#getEventJsoninfo()} field.
    * <p>
-   * If any required attribute is not present in the given JSON object, an
+   * The method ensures that the client and organization are set by looking up the
+   * corresponding entities in the database. If the entities are not found, an
    * exception is thrown.
+   * <p>
+   * The method returns the newly created task.
    *
    * @param rule
-   *     the table containing the task type, status, and state
+   *     the rule to create the task for
    * @param initialState
    *     the initial state of the task
    * @param data
-   *     the JSON object containing the required attributes
+   *     the data used to create the task
+   * @param rawEvent
+   *     the raw event JSON
+   * @param createdAutomatically
+   *     whether the task was created automatically
    * @return the newly created task
    * @throws OBException
-   *     if any required attribute is not present in the given JSON object
+   *     if any error occurs during the execution of this method
    */
-  public static Task createTask(Table rule, State initialState, JSONObject data) {
+  public static Task createTask(Table rule, State initialState, JSONObject data, JSONObject rawEvent,
+      boolean createdAutomatically) {
     try {
       OBDal obd = OBDal.getInstance();
 
       Task newTask = OBProvider.getInstance().get(Task.class);
       newTask.setTaskType(rule.getTaskType());
       newTask.setStatus(initialState.getTaskStatus());
-      newTask.setCreatedAutomatically(true);
+      newTask.setCreatedAutomatically(createdAutomatically);
+      if (rawEvent != null) {
+        newTask.setEventJsoninfo(rawEvent.toString());
+      }
 
       String clientId = getRequiredString(data, TaskConstants.AD_CLIENT_ATTR);
       newTask.setClient(getRequiredEntity(Client.class, clientId, TaskConstants.AD_CLIENT_ATTR));
