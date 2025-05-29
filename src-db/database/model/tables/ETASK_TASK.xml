@@ -75,5 +75,6 @@
         <index-column name="ETASK_TASK_TYPE_ID"/>
       </index>
       <check name="ETASK_TASK_ISACTIVE_CHK"><![CDATA[ISACTIVE IN ('Y', 'N')]]></check>
+      <check name="ETASK_TASK_CREATED_ATML_CHK"><![CDATA[CREATED_AUTOMATICALLY IN ('Y', 'N')]]></check>
     </table>
   </database>

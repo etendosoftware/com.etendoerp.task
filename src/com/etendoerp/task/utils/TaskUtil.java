@@ -16,6 +16,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
+import org.hibernate.criterion.MatchMode;
 import org.hibernate.criterion.Restrictions;
 import org.openbravo.base.exception.OBException;
 import org.openbravo.base.provider.OBProvider;
@@ -370,13 +371,23 @@ public final class TaskUtil {
       throw new OBException(OBMessageUtils.getI18NMessage("ETASK_MissingVerb"));
     }
     String operation = parameters.getString(TaskConstants.OPERATION);
-    String verb = switch (operation) {
-      case "c" -> TaskConstants.TABLE_CREATE;
-      case "u" -> TaskConstants.TABLE_UPDATE;
-      case "d" -> TaskConstants.TABLE_DELETE;
-      default -> throw new OBException(String.format(
-          OBMessageUtils.messageBD("ETASK_InvalidDatabaseOperation"), operation));
-    };
+    String verb;
+
+    switch (operation) {
+      case "c":
+        verb = TaskConstants.TABLE_CREATE;
+        break;
+      case "u":
+        verb = TaskConstants.TABLE_UPDATE;
+        break;
+      case "d":
+        verb = TaskConstants.TABLE_DELETE;
+        break;
+      default:
+        throw new OBException(String.format(
+            OBMessageUtils.messageBD("ETASK_InvalidDatabaseOperation"), operation));
+    }
+
     out.put(TaskConstants.VERB, verb);
 
     if (parameters.has(TaskConstants.BEFORE) && !parameters.isNull(TaskConstants.BEFORE)) {
@@ -526,7 +537,8 @@ public final class TaskUtil {
   public static org.openbravo.model.ad.datamodel.Table getADTable(String tableName) {
     OBCriteria<org.openbravo.model.ad.datamodel.Table> tableOBCriteria =
         OBDal.getInstance().createCriteria(org.openbravo.model.ad.datamodel.Table.class);
-    tableOBCriteria.add(Restrictions.ilike(org.openbravo.model.ad.datamodel.Table.PROPERTY_DBTABLENAME, tableName));
+    tableOBCriteria.add(
+        Restrictions.ilike(org.openbravo.model.ad.datamodel.Table.PROPERTY_DBTABLENAME, tableName, MatchMode.EXACT));
     tableOBCriteria.setMaxResults(1);
     return (org.openbravo.model.ad.datamodel.Table) tableOBCriteria.uniqueResult();
   }

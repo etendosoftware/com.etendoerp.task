@@ -20,11 +20,11 @@ Debezium Event ──► TaskTypeMatchJob ──► ETASK_Task + Kafka Topics
 
 ## 🧱 Required Modules / Branches
 
-| Gradle Module                | Branch          |
-| ---------------------------- | --------------- |
-| `com.etendoerp.asyncprocess` | `epic/ETP-1200` |
-| `com.etendoerp.etendorx`     | `epic/ETP-1200` |
-| `com.etendoerp.reactor`      | `master`        |
+| Gradle Module                | Branch              |
+| ---------------------------- | ------------------- |
+| `com.etendoerp.asyncprocess` | `epic/ETP-1200-Y24` |
+| `com.etendoerp.etendorx`     | `epic/ETP-1200-Y24` |
+| `com.etendoerp.reactor`      | `release/24.4`      |
 
 ## 🗃️ Database Prerequisites
 
