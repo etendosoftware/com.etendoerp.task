@@ -52,5 +52,6 @@ sourceSets {
 * Ex: implementation "com.sun.mail:javax.mail:1.6.2"
 */
 dependencies {
+    implementation 'org.apache.commons:commons-jexl3:3.3'
     implementation('com.etendoerp.platform:etendo-core:[22.1.0,25.1.0)')
 }

@@ -49,9 +49,14 @@
         <default/>
         <onCreateDefault/>
       </column>
-      <foreign-key foreignTable="OBUIAPP_PROCESS" name="ETASK_STATE_ACTION_FK">
-        <reference local="ACTION" foreign="OBUIAPP_PROCESS_ID"/>
-      </foreign-key>
+      <column name="FILTER" primaryKey="false" required="false" type="VARCHAR" size="2000" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+      <column name="AD_MODULE_ID" primaryKey="false" required="true" type="VARCHAR" size="32" autoIncrement="false">
+        <default><![CDATA[0]]></default>
+        <onCreateDefault/>
+      </column>
       <foreign-key foreignTable="AD_CLIENT" name="ETASK_TABLE_AD_CLIENT_FK">
         <reference local="AD_CLIENT_ID" foreign="AD_CLIENT_ID"/>
       </foreign-key>
@@ -61,10 +66,13 @@
       <foreign-key foreignTable="ETASK_TASK_TYPE" name="ETASK_TABLE_TASK_TYPE_FK" onDelete="cascade">
         <reference local="ETASK_TASK_TYPE_ID" foreign="ETASK_TASK_TYPE_ID"/>
       </foreign-key>
-      <index name="FKI_ETASK_STATE_ACTION_FK" unique="false">
+      <foreign-key foreignTable="AD_MODULE" name="ETASK_TASK_TYPE_MODULE_FK">
+        <reference local="AD_MODULE_ID" foreign="AD_MODULE_ID"/>
+      </foreign-key>
+      <index name="ETASK_STATE_ACTION_IDX" unique="false">
         <index-column name="ACTION"/>
       </index>
-      <index name="FKI_ETASK_TABLE_TASK_TYPE_FK" unique="false">
+      <index name="ETASK_TABLE_TASK_TYPE_IDX" unique="false">
         <index-column name="ETASK_TASK_TYPE_ID"/>
       </index>
       <check name="ETASK_TABLE_ISACTIVE_CHK"><![CDATA[ISACTIVE IN ('Y', 'N')]]></check>

@@ -45,8 +45,8 @@
         <default/>
         <onCreateDefault/>
       </column>
-      <column name="JOBS_JOB_ID" primaryKey="false" required="false" type="VARCHAR" size="32" autoIncrement="false">
-        <default/>
+      <column name="AD_MODULE_ID" primaryKey="false" required="true" type="VARCHAR" size="32" autoIncrement="false">
+        <default><![CDATA[0]]></default>
         <onCreateDefault/>
       </column>
       <foreign-key foreignTable="AD_CLIENT" name="ETASK_STATE_AD_CLIENT_FK">
@@ -55,18 +55,15 @@
       <foreign-key foreignTable="AD_ORG" name="ETASK_STATE_AD_ORG_FK">
         <reference local="AD_ORG_ID" foreign="AD_ORG_ID"/>
       </foreign-key>
-      <foreign-key foreignTable="JOBS_JOB" name="ETASK_STATE_JOB_FK">
-        <reference local="JOBS_JOB_ID" foreign="JOBS_JOB_ID"/>
-      </foreign-key>
       <foreign-key foreignTable="ETASK_TASK_STATUS" name="ETASK_STATE_STATUS_FK">
         <reference local="ETASK_TASK_STATUS_ID" foreign="ETASK_TASK_STATUS_ID"/>
       </foreign-key>
       <foreign-key foreignTable="ETASK_TASK_TYPE" name="ETASK_STATE_TASK_TYPE_FK" onDelete="cascade">
         <reference local="ETASK_TASK_TYPE_ID" foreign="ETASK_TASK_TYPE_ID"/>
       </foreign-key>
-      <index name="ETASK_STATE_JOB_IDX" unique="false">
-        <index-column name="JOBS_JOB_ID"/>
-      </index>
+      <foreign-key foreignTable="AD_MODULE" name="ETASK_TASK_TYPE_MODULE_FK">
+        <reference local="AD_MODULE_ID" foreign="AD_MODULE_ID"/>
+      </foreign-key>
       <index name="ETASK_STATE_STATUS_IDX" unique="false">
         <index-column name="ETASK_TASK_STATUS_ID"/>
       </index>
