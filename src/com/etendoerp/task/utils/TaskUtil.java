@@ -140,6 +140,7 @@ public final class TaskUtil {
       Action act = (Action) clazz.getDeclaredConstructor().newInstance();
 
       Method setParams = Action.class.getDeclaredMethod("setParameters", JSONObject.class);
+      setParams.setAccessible(true);
       setParams.invoke(act, payload);
 
       ActionResult ar = act.run(new Data(), new MutableBoolean(false));
