@@ -67,6 +67,10 @@
       <index name="ETASK_STATE_STATUS_IDX" unique="false">
         <index-column name="ETASK_TASK_STATUS_ID"/>
       </index>
+      <unique name="ETASK_STATE_UNIQUE_SEQUENCE">
+        <unique-column name="ETASK_TASK_TYPE_ID"/>
+        <unique-column name="SEQUENCE_NO"/>
+      </unique>
       <check name="ETASK_STATE_ISACTIVE_CHK"><![CDATA[ISACTIVE IN ('Y', 'N')]]></check>
     </table>
   </database>
