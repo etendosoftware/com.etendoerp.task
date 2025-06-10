@@ -49,7 +49,7 @@ public class TaskConstants {
   public static final String TASK_TABLENAME = "etask_task";
 
   /* Table Events constants */
-  public static final String TABLE_CREATE = "create";
+  public static final String TABLE_CREATE = "insert";
   public static final String TABLE_UPDATE = "update";
   public static final String TABLE_DELETE = "delete";
 
