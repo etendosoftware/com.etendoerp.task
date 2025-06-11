@@ -367,10 +367,6 @@ public final class TaskUtil {
       throw new OBException(OBMessageUtils.getI18NMessage("ETASK_MissingTable"));
     }
     out.put(TaskConstants.TABLE, src.getString(TaskConstants.TABLE));
-
-    if (!parameters.has(TaskConstants.OPERATION) || parameters.getString(TaskConstants.OPERATION).isEmpty()) {
-      throw new OBException(OBMessageUtils.getI18NMessage("ETASK_MissingVerb"));
-    }
     String operation = parameters.getString(TaskConstants.OPERATION);
     String verb;
 
