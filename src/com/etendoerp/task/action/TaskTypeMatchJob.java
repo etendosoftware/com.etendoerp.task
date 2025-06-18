@@ -1,6 +1,7 @@
 package com.etendoerp.task.action;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
@@ -12,6 +13,7 @@ import org.openbravo.base.exception.OBException;
 import org.openbravo.dal.core.OBContext;
 import org.openbravo.dal.service.OBDal;
 import org.openbravo.erpCommon.utility.OBMessageUtils;
+import org.openbravo.model.ad.access.User;
 
 import com.etendoerp.task.data.State;
 import com.etendoerp.task.data.Table;
@@ -47,6 +49,8 @@ import com.smf.jobs.Result;
 public class TaskTypeMatchJob extends Action {
 
   private static final Logger log = LogManager.getLogger(TaskTypeMatchJob.class);
+  public static final String ASSIGNED_ROLE = "assigned_role";
+  public static final String ASSIGNED_USER = "assigned_user";
 
   /**
    * Executes the task type matching logic for the given JSON parameters and whether the job is stopped.
@@ -197,8 +201,66 @@ public class TaskTypeMatchJob extends Action {
       }
     }
 
+    var contextJson = new JSONObject();
+    JSONObject afterBlock = parameters.getJSONObject("after");
+    String userId = getUser(afterBlock);
+    contextJson.put("user", userId);
+    contextJson.put("client", afterBlock.getString("ad_client_id"));
+    contextJson.put("role", getRole(afterBlock, userId));
+    contextJson.put("organization", afterBlock.getString("ad_org_id"));
+    parameters.put("context", contextJson);
     result.setMessage(outJson(topics, parameters, null).toString());
     return result;
+  }
+
+
+  /**
+   * Retrieves the role ID for a user based on the provided parameters.
+   *
+   * <p>If the `parameters` object contains the `ad_role_id` field, its value is returned.
+   * Otherwise, the method fetches the user from the database using the provided `userId`
+   * and retrieves the default role ID associated with that user. If the user does not have
+   * a default role, the first role from the user's role list is returned.
+   *
+   * @param taskData
+   *     A JSON object containing input parameters, which may include `ad_role_id`.
+   * @param userId
+   *     The ID of the user whose role is to be retrieved.
+   * @return The role ID as a string.
+   */
+  public String getRole(JSONObject taskData, String userId) {
+    if (taskData.has(ASSIGNED_ROLE) && taskData.optString(ASSIGNED_ROLE, null) != null
+        && !StringUtils.equals(taskData.optString(ASSIGNED_ROLE, null), "null")) {
+      return taskData.optString(ASSIGNED_ROLE);
+    }
+    User usr = OBDal.getReadOnlyInstance().get(User.class, userId);
+    if (usr.getDefaultRole() != null) {
+      return usr.getDefaultRole().getId();
+    }
+    return usr.getADUserRolesList().get(0).getRole().getId();
+  }
+
+  /**
+   * Retrieves the user ID from the provided parameters.
+   *
+   * <p>The method first checks if the `after` object in the `parameters` contains an `assigned_user` field.
+   * If found, its value is returned. If not, the method checks for the `createdby` field in the same object.
+   * If neither field is present, a default user ID of "100" is returned.
+   *
+   * @param taskData
+   *     A JSON object containing input parameters, which may include user-related fields.
+   * @return The user ID as a string.
+   */
+  public String getUser(JSONObject taskData) {
+    if (taskData == null) {
+      // Default user ID if not specified
+      return "100";
+    }
+    if (taskData.has(ASSIGNED_USER) && taskData.optString(ASSIGNED_USER, null) != null && !StringUtils.equals(
+        taskData.optString(ASSIGNED_USER, null), "null")) {
+      return taskData.optString(ASSIGNED_USER);
+    }
+    return taskData.optString("createdby");
   }
 
   /**
