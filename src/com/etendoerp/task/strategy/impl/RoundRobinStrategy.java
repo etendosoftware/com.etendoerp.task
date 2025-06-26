@@ -59,7 +59,7 @@ public class RoundRobinStrategy implements UserAvailabilityStrategy {
 
     User selectedUser = availableUsers.get(currentIndex);
 
-    TaskUtil.updateRoundRobinIndex(taskType, currentIndex + 1, availableUsers.size());
+    TaskUtil.updateRoundRobinIndex(taskType.getId(), currentIndex + 1, availableUsers.size());
 
     return selectedUser;
   }
