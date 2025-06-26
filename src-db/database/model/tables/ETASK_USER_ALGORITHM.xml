@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
-  <database name="TABLE ETASK_TASK_TYPE">
-    <table name="ETASK_TASK_TYPE" primaryKey="ETASK_TASK_TYPE_PK">
-      <column name="ETASK_TASK_TYPE_ID" primaryKey="true" required="true" type="VARCHAR" size="32" autoIncrement="false">
+  <database name="TABLE ETASK_USER_ALGORITHM">
+    <table name="ETASK_USER_ALGORITHM" primaryKey="ETASK_USER_ALG_KEY">
+      <column name="ETASK_USER_ALGORITHM_ID" primaryKey="true" required="true" type="VARCHAR" size="32" autoIncrement="false">
         <default/>
         <onCreateDefault/>
       </column>
@@ -33,15 +33,11 @@
         <default/>
         <onCreateDefault/>
       </column>
-      <column name="NAME" primaryKey="false" required="true" type="VARCHAR" size="200" autoIncrement="false">
+      <column name="NAME" primaryKey="false" required="true" type="VARCHAR" size="60" autoIncrement="false">
         <default/>
         <onCreateDefault/>
       </column>
-      <column name="RRINDEX" primaryKey="false" required="true" type="DECIMAL" size="10,0" autoIncrement="false">
-        <default><![CDATA[0]]></default>
-        <onCreateDefault/>
-      </column>
-      <column name="VALUE" primaryKey="false" required="true" type="VARCHAR" size="40" autoIncrement="false">
+      <column name="JAVA_IMPLEMENTATION" primaryKey="false" required="true" type="VARCHAR" size="255" autoIncrement="false">
         <default/>
         <onCreateDefault/>
       </column>
@@ -49,27 +45,18 @@
         <default><![CDATA[0]]></default>
         <onCreateDefault/>
       </column>
-      <column name="ETASK_USER_ALGORITHM_ID" primaryKey="false" required="true" type="VARCHAR" size="32" autoIncrement="false">
-        <default><![CDATA[0711B9DECC004FC8ACA751E19DF18BFB]]></default>
-        <onCreateDefault/>
-      </column>
-      <foreign-key foreignTable="AD_CLIENT" name="ETASK_TASK_TYPE_AD_CLIENT_FK">
+      <foreign-key foreignTable="AD_CLIENT" name="ETASK_USER_ALG_CLIENT">
         <reference local="AD_CLIENT_ID" foreign="AD_CLIENT_ID"/>
       </foreign-key>
-      <foreign-key foreignTable="AD_ORG" name="ETASK_TASK_TYPE_AD_ORG_FK">
-        <reference local="AD_ORG_ID" foreign="AD_ORG_ID"/>
-      </foreign-key>
-      <foreign-key foreignTable="AD_MODULE" name="ETASK_TASK_TYPE_MODULE_FK">
+      <foreign-key foreignTable="AD_MODULE" name="ETASK_USER_ALG_MODULE">
         <reference local="AD_MODULE_ID" foreign="AD_MODULE_ID"/>
       </foreign-key>
-      <foreign-key foreignTable="ETASK_USER_ALGORITHM" name="ETASK_USER_ALG">
-        <reference local="ETASK_USER_ALGORITHM_ID" foreign="ETASK_USER_ALGORITHM_ID"/>
+      <foreign-key foreignTable="AD_ORG" name="ETASK_USER_ALG_ORG">
+        <reference local="AD_ORG_ID" foreign="AD_ORG_ID"/>
       </foreign-key>
-      <unique name="ETASK_TASK_TYPE_VALUE_UNIQUE">
-        <unique-column name="VALUE"/>
-        <unique-column name="AD_ORG_ID"/>
-        <unique-column name="AD_CLIENT_ID"/>
-      </unique>
-      <check name="ETASK_TASK_TYPE_ISACTIVE_CHK"><![CDATA[ISACTIVE IN ('Y', 'N')]]></check>
+      <index name="ETASK_USER_ALG_MODULE_FKI" unique="false">
+        <index-column name="AD_MODULE_ID"/>
+      </index>
+      <check name="ETASK_USER_ALG_ISACTIVE_CHK"><![CDATA[ISACTIVE IN ('Y', 'N')]]></check>
     </table>
   </database>

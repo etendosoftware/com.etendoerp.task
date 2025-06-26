@@ -75,7 +75,7 @@ public class RoundRobinByWorkloadStrategy implements UserAvailabilityStrategy {
     int currentIndex = (taskType.getRoundRobinIndex() != null) ? taskType.getRoundRobinIndex().intValue() : 0;
     User selectedUser = minimalLoadOps.get(currentIndex);
 
-    TaskUtil.updateRoundRobinIndex(taskType, currentIndex + 1, minimalLoadOps.size());
+    TaskUtil.updateRoundRobinIndex(taskType.getId() , currentIndex + 1, minimalLoadOps.size());
 
     return selectedUser;
   }
