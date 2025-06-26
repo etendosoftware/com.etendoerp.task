@@ -37,6 +37,9 @@ public class TaskTestsConstants {
 
   public static final String NO_TASK_TYPE_ERROR = "No task type found";
   public static final String NO_USERS_ERROR = "No users found";
+  public static final String OUT_JSON = "outJson";
+  public static final String TEST_TABLE = "test_table";
+  public static final String ORG_ID = "org123";
 
 
 }

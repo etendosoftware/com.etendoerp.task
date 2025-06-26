@@ -14,6 +14,8 @@
  ************************************************************************/
 package com.etendoerp.task.utils;
 
+import static com.etendoerp.task.TaskTestsConstants.ORG_ID;
+import static com.etendoerp.task.TaskTestsConstants.TEST_TABLE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -150,7 +152,12 @@ public class TaskUtilTest {
 
     assertFalse(result);
   }
-
+  /**
+   * Tests the validation of a filter that returns a non-boolean result.
+   * This should return false when the filter expression evaluates to a non-boolean value.
+   *
+   * @throws Exception if there's an error during filter evaluation
+   */
   @Test
   public void testValidateFilterWithNonBooleanResult() throws Exception {
     String filter = "age + 5";
@@ -302,11 +309,17 @@ public class TaskUtilTest {
       verify(mockDal).flush();
     }
   }
-
+  /**
+   * Tests the validation and normalization of parameters with valid input data.
+   * This should successfully validate and normalize the parameters, setting the
+   * appropriate table name and verb based on the operation.
+   *
+   * @throws Exception if there's an error during parameter validation or normalization
+   */
   @Test
   public void testValidateAndNormalizeParametersValid() throws Exception {
     JSONObject parameters = new JSONObject();
-    JSONObject source = new JSONObject().put(TaskConstants.TABLE, "test_table");
+    JSONObject source = new JSONObject().put(TaskConstants.TABLE,TEST_TABLE);
     parameters.put(TaskConstants.SOURCE, source);
     parameters.put(TaskConstants.OPERATION, "c");
     parameters.put(TaskConstants.AFTER, new JSONObject().put("id", "123"));
@@ -334,11 +347,17 @@ public class TaskUtilTest {
       assertEquals("Missing source", exception.getMessage());
     }
   }
-
+  /**
+   * Tests the validation and normalization of parameters with an invalid operation.
+   * This should throw an OBException when an unsupported database operation is provided.
+   *
+   * @throws Exception if there's an error during parameter validation
+   * @throws OBException when an invalid operation is specified
+   */
   @Test
   public void testValidateAndNormalizeParametersInvalidOperation() throws Exception {
     JSONObject parameters = new JSONObject();
-    JSONObject source = new JSONObject().put(TaskConstants.TABLE, "test_table");
+    JSONObject source = new JSONObject().put(TaskConstants.TABLE,TEST_TABLE);
     parameters.put(TaskConstants.SOURCE, source);
     parameters.put(TaskConstants.OPERATION, "x");
     parameters.put(TaskConstants.AFTER, new JSONObject());
@@ -352,12 +371,18 @@ public class TaskUtilTest {
       assertTrue(exception.getMessage().contains("x"));
     }
   }
-
+  /**
+   * Tests the creation of a task with valid input parameters.
+   * This should successfully create a new Task object with the provided data,
+   * setting all required fields including client, organization, and user references.
+   *
+   * @throws Exception if there's an error during task creation or data access
+   */
   @Test
   public void testCreateTask() throws Exception {
     JSONObject data = new JSONObject();
     data.put(TaskConstants.AD_CLIENT_ATTR, "client123");
-    data.put(TaskConstants.AD_ORG_ATTR, "org123");
+    data.put(TaskConstants.AD_ORG_ATTR, ORG_ID);
     JSONObject rawEvent = new JSONObject().put("event", "test");
 
     try (MockedStatic<OBDal> dalStatic = mockStatic(OBDal.class);
@@ -368,7 +393,7 @@ public class TaskUtilTest {
 
       when(mockProvider.get(Task.class)).thenReturn(mockTask);
       when(mockDal.get(Client.class, "client123")).thenReturn(mockClient);
-      when(mockDal.get(Organization.class, "org123")).thenReturn(mockOrganization);
+      when(mockDal.get(Organization.class, ORG_ID)).thenReturn(mockOrganization);
       when(mockDal.get(User.class, TaskConstants.ADMIN_USER)).thenReturn(mockUser);
 
       when(mockTable.getTaskType()).thenReturn(mockTaskType);
@@ -385,11 +410,18 @@ public class TaskUtilTest {
       verify(mockTask).setOrganization(mockOrganization);
     }
   }
-
+  /**
+   * Tests the creation of a task when the client attribute is missing from the data.
+   * This should throw an OBException indicating that the required client attribute
+   * is missing from the event data.
+   *
+   * @throws Exception if there's an error during task creation validation
+   * @throws OBException when the required client attribute is missing
+   */
   @Test
   public void testCreateTaskMissingClient() throws Exception {
     JSONObject data = new JSONObject();
-    data.put(TaskConstants.AD_ORG_ATTR, "org123");
+    data.put(TaskConstants.AD_ORG_ATTR, ORG_ID);
 
     try (MockedStatic<OBMessageUtils> msgUtils = mockStatic(OBMessageUtils.class)) {
       msgUtils.when(() -> OBMessageUtils.messageBD("ETASK_MissingAttributeInEventData")).thenReturn(
@@ -451,7 +483,7 @@ public class TaskUtilTest {
    */
   @Test
   public void testGetADTableFound() {
-    String tableName = "test_table";
+    String tableName =TEST_TABLE;
 
     try (MockedStatic<OBDal> dalStatic = mockStatic(OBDal.class)) {
       dalStatic.when(OBDal::getInstance).thenReturn(mockDal);

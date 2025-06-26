@@ -30,6 +30,7 @@ import java.util.List;
 
 import org.apache.commons.lang.mutable.MutableBoolean;
 import org.codehaus.jettison.json.JSONObject;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -53,11 +54,23 @@ import com.smf.jobs.Result;
 @ExtendWith(MockitoExtension.class)
 public class RoundRobinTest {
 
-  @Mock
-  private Task mockTask;
+  @Mock private Task mockTask;
+  @Mock private OBDal mockDal;
 
-  @Mock
-  private OBDal mockDal;
+  private RoundRobin action;
+  private JSONObject parameters;
+  private MutableBoolean isStopped;
+
+  /**
+   * Sets up the test environment before each test case.
+   * Initializes the RoundRobin action, parameters, and mutable boolean for stopping condition.
+   */
+  @BeforeEach
+  void setUp() {
+    action = new RoundRobin();
+    parameters = new JSONObject();
+    isStopped = new MutableBoolean(false);
+  }
 
   /**
    * Verifies that the action method assigns a user to a task when a valid task ID is provided.
@@ -66,28 +79,12 @@ public class RoundRobinTest {
    */
   @Test
   public void testActionSuccessWithTaskIdParameter() throws Exception {
-    RoundRobin action = new RoundRobin();
-    JSONObject parameters = new JSONObject();
     parameters.put(TaskConstants.TASK_ID_PROPERTY, TASK_ID);
-    MutableBoolean isStopped = new MutableBoolean(false);
 
-    try (MockedStatic<OBDal> obDalStatic = mockStatic(OBDal.class);
-         MockedStatic<OBMessageUtils> msgUtils = mockStatic(OBMessageUtils.class);
-         MockedStatic<RoundRobinHelper> helperStatic = mockStatic(RoundRobinHelper.class);
-         MockedConstruction<RoundRobinStrategy> strategyConstruction = mockConstruction(RoundRobinStrategy.class)) {
+    ActionResult result = executeActionWithTaskLookup(mockTask, SUCCESS_MESSAGE, "ETASK_UserAssignedToTask");
 
-      obDalStatic.when(OBDal::getInstance).thenReturn(mockDal);
-      when(mockDal.get(Task.class, TASK_ID)).thenReturn(mockTask);
-
-      msgUtils.when(() -> OBMessageUtils.messageBD("ETASK_UserAssignedToTask")).thenReturn(SUCCESS_MESSAGE);
-
-      helperStatic.when(() -> RoundRobinHelper.assignUsers(any(List.class), any())).thenAnswer(inv -> null);
-
-      ActionResult result = action.action(parameters, isStopped);
-
-      assertEquals(Result.Type.SUCCESS, result.getType());
-      assertEquals(SUCCESS_MESSAGE, result.getMessage());
-    }
+    assertEquals(Result.Type.SUCCESS, result.getType());
+    assertEquals(SUCCESS_MESSAGE, result.getMessage());
   }
 
   /**
@@ -97,24 +94,12 @@ public class RoundRobinTest {
    */
   @Test
   public void testActionErrorWhenTaskNotFoundById() throws Exception {
-    RoundRobin action = new RoundRobin();
-    JSONObject parameters = new JSONObject();
     parameters.put(TaskConstants.TASK_ID_PROPERTY, TASK_ID);
-    MutableBoolean isStopped = new MutableBoolean(false);
 
-    try (MockedStatic<OBDal> obDalStatic = mockStatic(OBDal.class);
-         MockedStatic<OBMessageUtils> msgUtils = mockStatic(OBMessageUtils.class)) {
+    ActionResult result = executeActionWithTaskLookup(null, NO_TASK_ERROR, "ETASK_NoTaskFound");
 
-      obDalStatic.when(OBDal::getInstance).thenReturn(mockDal);
-      when(mockDal.get(Task.class, TASK_ID)).thenReturn(null);
-
-      msgUtils.when(() -> OBMessageUtils.messageBD("ETASK_NoTaskFound")).thenReturn(NO_TASK_ERROR);
-
-      ActionResult result = action.action(parameters, isStopped);
-
-      assertEquals(Result.Type.ERROR, result.getType());
-      assertEquals(NO_TASK_ERROR, result.getMessage());
-    }
+    assertEquals(Result.Type.ERROR, result.getType());
+    assertEquals(NO_TASK_ERROR, result.getMessage());
   }
 
   /**
@@ -122,13 +107,10 @@ public class RoundRobinTest {
    */
   @Test
   public void testActionErrorWhenJSONParsingFails() {
-    RoundRobin action = new RoundRobin();
-    JSONObject parameters = mock(JSONObject.class);
-    MutableBoolean isStopped = new MutableBoolean(false);
+    JSONObject faultyParameters = mock(JSONObject.class);
+    when(faultyParameters.has(anyString())).thenThrow(new RuntimeException("JSON parsing error"));
 
-    when(parameters.has(anyString())).thenThrow(new RuntimeException("JSON parsing error"));
-
-    ActionResult result = action.action(parameters, isStopped);
+    ActionResult result = action.action(faultyParameters, isStopped);
 
     assertEquals(Result.Type.ERROR, result.getType());
     assertEquals("JSON parsing error", result.getMessage());
@@ -139,8 +121,6 @@ public class RoundRobinTest {
    */
   @Test
   public void testGetInputClassReturnsTaskClass() {
-    RoundRobin action = new RoundRobin();
-
     Class<Task> result = action.getInputClass();
 
     assertSame(Task.class, result);
@@ -153,23 +133,46 @@ public class RoundRobinTest {
    */
   @Test
   public void testActionErrorWhenOBExceptionThrown() throws Exception {
-    RoundRobin action = new RoundRobin();
-    JSONObject parameters = new JSONObject();
     parameters.put(TaskConstants.TASK_ID_PROPERTY, TASK_ID);
-    MutableBoolean isStopped = new MutableBoolean(false);
+
+    ActionResult result = executeActionWithTaskLookup(null, NO_TASK_ERROR, "ETASK_NoTaskFound");
+
+    assertEquals(Result.Type.ERROR, result.getType());
+    assertEquals(NO_TASK_ERROR, result.getMessage());
+  }
+
+  /**
+   * Executes the action with mocked task lookup and message utilities.
+   *
+   * @param taskToReturn The task object to return from DAL lookup (null for not found scenarios)
+   * @param expectedMessage The message to return from OBMessageUtils
+   * @param messageKey The message key to use for OBMessageUtils lookup
+   * @return The ActionResult from executing the action
+   */
+  private ActionResult executeActionWithTaskLookup(Task taskToReturn, String expectedMessage, String messageKey) {
 
     try (MockedStatic<OBDal> obDalStatic = mockStatic(OBDal.class);
-         MockedStatic<OBMessageUtils> msgUtils = mockStatic(OBMessageUtils.class)) {
+         MockedStatic<OBMessageUtils> msgUtils = mockStatic(OBMessageUtils.class);
+         MockedStatic<RoundRobinHelper> helperStatic = mockStatic(RoundRobinHelper.class);
+         MockedConstruction<RoundRobinStrategy> strategyConstruction = mockConstruction(RoundRobinStrategy.class)) {
 
-      obDalStatic.when(OBDal::getInstance).thenReturn(mockDal);
-      when(mockDal.get(Task.class, TASK_ID)).thenReturn(null);
+      setupBasicMocks(obDalStatic, msgUtils, taskToReturn, expectedMessage, messageKey);
 
-      msgUtils.when(() -> OBMessageUtils.messageBD("ETASK_NoTaskFound")).thenReturn(NO_TASK_ERROR);
+      if (taskToReturn != null) {
+        helperStatic.when(() -> RoundRobinHelper.assignUsers(any(List.class), any())).thenAnswer(inv -> null);
+      }
 
-      ActionResult result = action.action(parameters, isStopped);
-
-      assertEquals(Result.Type.ERROR, result.getType());
-      assertEquals(NO_TASK_ERROR, result.getMessage());
+      return action.action(parameters, isStopped);
     }
+  }
+
+  /**
+   * Sets up the basic mocks for OBDal and OBMessageUtils.
+   */
+  private void setupBasicMocks(MockedStatic<OBDal> obDalStatic, MockedStatic<OBMessageUtils> msgUtils,
+      Task taskToReturn, String expectedMessage, String messageKey) {
+    obDalStatic.when(OBDal::getInstance).thenReturn(mockDal);
+    when(mockDal.get(Task.class, TASK_ID)).thenReturn(taskToReturn);
+    msgUtils.when(() -> OBMessageUtils.messageBD(messageKey)).thenReturn(expectedMessage);
   }
 }

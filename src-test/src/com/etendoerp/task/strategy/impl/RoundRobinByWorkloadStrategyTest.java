@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -47,43 +48,33 @@ import com.etendoerp.task.utils.TaskUtil;
 @ExtendWith(MockitoExtension.class)
 public class RoundRobinByWorkloadStrategyTest {
 
-  @Mock
-  private TaskType mockTaskType;
+  @Mock private TaskType mockTaskType;
+  @Mock private User mockUser1;
+  @Mock private User mockUser2;
+  @Mock private User mockUser3;
+  @Mock private Task mockTask1;
+  @Mock private Task mockTask2;
+  @Mock private Task mockTask3;
+  @Mock private Status mockPendingStatus;
+  @Mock private Status mockInProgressStatus;
+  @Mock private Status mockCompletedStatus;
 
-  @Mock
-  private User mockUser1;
+  private RoundRobinByWorkloadStrategy strategy;
+  private List<User> twoUsers;
+  private List<User> threeUsers;
 
-  @Mock
-  private User mockUser2;
-
-  @Mock
-  private User mockUser3;
-
-  @Mock
-  private Task mockTask1;
-
-  @Mock
-  private Task mockTask2;
-
-  @Mock
-  private Task mockTask3;
-
-  @Mock
-  private Status mockPendingStatus;
-
-  @Mock
-  private Status mockInProgressStatus;
-
-  @Mock
-  private Status mockCompletedStatus;
+  @BeforeEach
+  void setUp() {
+    strategy = new RoundRobinByWorkloadStrategy();
+    twoUsers = Arrays.asList(mockUser1, mockUser2);
+    threeUsers = Arrays.asList(mockUser1, mockUser2, mockUser3);
+  }
 
   /**
    * Tests that findUserAccordingStrategy throws OBException when taskType is null.
    */
   @Test
   public void testFindUserAccordingStrategyThrowsExceptionWhenTaskTypeIsNull() {
-    RoundRobinByWorkloadStrategy strategy = new RoundRobinByWorkloadStrategy();
-
     try (MockedStatic<OBMessageUtils> msgUtils = mockStatic(OBMessageUtils.class)) {
       msgUtils.when(() -> OBMessageUtils.messageBD("ETASK_NoTaskTypeFound")).thenReturn(NO_TASK_TYPE_ERROR);
 
@@ -97,11 +88,8 @@ public class RoundRobinByWorkloadStrategyTest {
    */
   @Test
   public void testFindUserAccordingStrategyThrowsExceptionWhenNoUsersAvailable() {
-    RoundRobinByWorkloadStrategy strategy = new RoundRobinByWorkloadStrategy();
-
-    try (MockedStatic<TaskUtil> taskUtils = mockStatic(
-        TaskUtil.class); MockedStatic<OBMessageUtils> msgUtils = mockStatic(
-        OBMessageUtils.class)) {
+    try (MockedStatic<TaskUtil> taskUtils = mockStatic(TaskUtil.class);
+         MockedStatic<OBMessageUtils> msgUtils = mockStatic(OBMessageUtils.class)) {
 
       taskUtils.when(TaskUtil::getActiveUsers).thenReturn(Collections.emptyList());
       msgUtils.when(() -> OBMessageUtils.messageBD("ETASK_NoUsersFound")).thenReturn(NO_USERS_ERROR);
@@ -116,31 +104,12 @@ public class RoundRobinByWorkloadStrategyTest {
    */
   @Test
   public void testFindUserAccordingStrategyUsesExistingRoundRobinIndex() {
-    RoundRobinByWorkloadStrategy strategy = new RoundRobinByWorkloadStrategy();
-    List<User> availableUsers = Arrays.asList(mockUser1, mockUser2);
+    setupTasksWithUsers();
+    List<Task> tasks = Arrays.asList(mockTask1, mockTask2);
 
-    when(mockTaskType.getRoundRobinIndex()).thenReturn(0L);
+    User result = executeStrategyWithMockedUtils(twoUsers, tasks, 0L, 1, 2);
 
-    when(mockTask1.getAssignedUser()).thenReturn(mockUser1);
-    when(mockTask1.getStatus()).thenReturn(mockPendingStatus);
-
-    when(mockTask2.getAssignedUser()).thenReturn(mockUser2);
-    when(mockTask2.getStatus()).thenReturn(mockPendingStatus);
-
-    List<Task> allTasks = Arrays.asList(mockTask1, mockTask2);
-
-    try (MockedStatic<TaskUtil> taskUtils = mockStatic(TaskUtil.class)) {
-      taskUtils.when(TaskUtil::getActiveUsers).thenReturn(availableUsers);
-      taskUtils.when(() -> TaskUtil.preloadTasks(availableUsers)).thenReturn(allTasks);
-      taskUtils.when(() -> TaskUtil.getStatus("PE")).thenReturn(mockPendingStatus);
-      taskUtils.when(() -> TaskUtil.getStatus("IP")).thenReturn(mockInProgressStatus);
-      taskUtils.when(() -> TaskUtil.updateRoundRobinIndex(mockTaskType, 1, 2)).thenAnswer(inv -> null);
-
-      User result = strategy.findUserAccordingStrategy(mockTaskType);
-
-      assertNotNull(result);
-      taskUtils.verify(() -> TaskUtil.updateRoundRobinIndex(mockTaskType, 1, 2));
-    }
+    assertNotNull(result);
   }
 
   /**
@@ -148,26 +117,10 @@ public class RoundRobinByWorkloadStrategyTest {
    */
   @Test
   public void testFindUserAccordingStrategyHandlesMultipleUsersWithSameMinimalWorkload() {
-    RoundRobinByWorkloadStrategy strategy = new RoundRobinByWorkloadStrategy();
-    List<User> availableUsers = Arrays.asList(mockUser1, mockUser2, mockUser3);
+    User result = executeStrategyWithMockedUtils(threeUsers, Collections.emptyList(), 0L, 1, 3);
 
-    when(mockTaskType.getRoundRobinIndex()).thenReturn(0L);
-
-    List<Task> allTasks = Collections.emptyList();
-
-    try (MockedStatic<TaskUtil> taskUtils = mockStatic(TaskUtil.class)) {
-      taskUtils.when(TaskUtil::getActiveUsers).thenReturn(availableUsers);
-      taskUtils.when(() -> TaskUtil.preloadTasks(availableUsers)).thenReturn(allTasks);
-      taskUtils.when(() -> TaskUtil.getStatus("PE")).thenReturn(mockPendingStatus);
-      taskUtils.when(() -> TaskUtil.getStatus("IP")).thenReturn(mockInProgressStatus);
-      taskUtils.when(() -> TaskUtil.updateRoundRobinIndex(mockTaskType, 1, 3)).thenAnswer(inv -> null);
-
-      User result = strategy.findUserAccordingStrategy(mockTaskType);
-
-      assertNotNull(result);
-      assertEquals(mockUser1, result);
-      taskUtils.verify(() -> TaskUtil.updateRoundRobinIndex(mockTaskType, 1, 3));
-    }
+    assertNotNull(result);
+    assertEquals(mockUser1, result);
   }
 
   /**
@@ -175,33 +128,12 @@ public class RoundRobinByWorkloadStrategyTest {
    */
   @Test
   public void testFindUserAccordingStrategyFiltersOnlyOpenTasks() {
-    RoundRobinByWorkloadStrategy strategy = new RoundRobinByWorkloadStrategy();
-    List<User> availableUsers = Arrays.asList(mockUser1, mockUser2);
+    setupTasksWithMixedStatuses();
+    List<Task> tasks = Arrays.asList(mockTask1, mockTask2, mockTask3);
 
-    when(mockTaskType.getRoundRobinIndex()).thenReturn(0L);
+    User result = executeStrategyWithMockedUtils(twoUsers, tasks, 0L, 1, 2);
 
-    when(mockTask1.getAssignedUser()).thenReturn(mockUser1);
-    when(mockTask1.getStatus()).thenReturn(mockPendingStatus);
-
-    when(mockTask2.getStatus()).thenReturn(mockCompletedStatus);
-
-    when(mockTask3.getAssignedUser()).thenReturn(mockUser2);
-    when(mockTask3.getStatus()).thenReturn(mockInProgressStatus);
-
-    List<Task> allTasks = Arrays.asList(mockTask1, mockTask2, mockTask3);
-
-    try (MockedStatic<TaskUtil> taskUtils = mockStatic(TaskUtil.class)) {
-      taskUtils.when(TaskUtil::getActiveUsers).thenReturn(availableUsers);
-      taskUtils.when(() -> TaskUtil.preloadTasks(availableUsers)).thenReturn(allTasks);
-      taskUtils.when(() -> TaskUtil.getStatus("PE")).thenReturn(mockPendingStatus);
-      taskUtils.when(() -> TaskUtil.getStatus("IP")).thenReturn(mockInProgressStatus);
-      taskUtils.when(() -> TaskUtil.updateRoundRobinIndex(mockTaskType, 1, 2)).thenAnswer(inv -> null);
-
-      User result = strategy.findUserAccordingStrategy(mockTaskType);
-
-      assertNotNull(result);
-      taskUtils.verify(() -> TaskUtil.updateRoundRobinIndex(mockTaskType, 1, 2));
-    }
+    assertNotNull(result);
   }
 
   /**
@@ -209,15 +141,12 @@ public class RoundRobinByWorkloadStrategyTest {
    */
   @Test
   public void testGetUsersAvailableReturnsAllActiveUsers() {
-    RoundRobinByWorkloadStrategy strategy = new RoundRobinByWorkloadStrategy();
-    List<User> expectedUsers = Arrays.asList(mockUser1, mockUser2, mockUser3);
-
     try (MockedStatic<TaskUtil> taskUtils = mockStatic(TaskUtil.class)) {
-      taskUtils.when(TaskUtil::getActiveUsers).thenReturn(expectedUsers);
+      taskUtils.when(TaskUtil::getActiveUsers).thenReturn(threeUsers);
 
       List<User> result = strategy.getUsersAvailable(mockTaskType);
 
-      assertEquals(expectedUsers, result);
+      assertEquals(threeUsers, result);
       assertEquals(3, result.size());
       taskUtils.verify(TaskUtil::getActiveUsers);
     }
@@ -228,8 +157,6 @@ public class RoundRobinByWorkloadStrategyTest {
    */
   @Test
   public void testGetUsersAvailableReturnsEmptyListWhenNoActiveUsers() {
-    RoundRobinByWorkloadStrategy strategy = new RoundRobinByWorkloadStrategy();
-
     try (MockedStatic<TaskUtil> taskUtils = mockStatic(TaskUtil.class)) {
       taskUtils.when(TaskUtil::getActiveUsers).thenReturn(Collections.emptyList());
 
@@ -246,26 +173,59 @@ public class RoundRobinByWorkloadStrategyTest {
    */
   @Test
   public void testFindUserAccordingStrategyWrapsRoundRobinIndex() {
-    RoundRobinByWorkloadStrategy strategy = new RoundRobinByWorkloadStrategy();
-    List<User> availableUsers = Arrays.asList(mockUser1, mockUser2);
+    User result = executeStrategyWithMockedUtils(twoUsers, Collections.emptyList(), 0L, 1, 2);
 
-    when(mockTaskType.getRoundRobinIndex()).thenReturn(0L);
+    assertNotNull(result);
+    assertEquals(mockUser1, result);
+  }
 
-    List<Task> allTasks = Collections.emptyList();
+  /**
+   * Executes the strategy with mocked TaskUtil methods and verifies the round-robin index update.
+   */
+  private User executeStrategyWithMockedUtils(List<User> users, List<Task> tasks, long initialIndex,
+      int expectedNextIndex, int totalUsers) {
+    when(mockTaskType.getRoundRobinIndex()).thenReturn(initialIndex);
 
     try (MockedStatic<TaskUtil> taskUtils = mockStatic(TaskUtil.class)) {
-      taskUtils.when(TaskUtil::getActiveUsers).thenReturn(availableUsers);
-      taskUtils.when(() -> TaskUtil.preloadTasks(availableUsers)).thenReturn(allTasks);
-      taskUtils.when(() -> TaskUtil.getStatus("PE")).thenReturn(mockPendingStatus);
-      taskUtils.when(() -> TaskUtil.getStatus("IP")).thenReturn(mockInProgressStatus);
-      taskUtils.when(() -> TaskUtil.updateRoundRobinIndex(mockTaskType, 1, 2)).thenAnswer(inv -> null);
+      setupTaskUtilMocks(taskUtils, users, tasks);
+      taskUtils.when(() -> TaskUtil.updateRoundRobinIndex(mockTaskType, expectedNextIndex, totalUsers))
+          .thenAnswer(inv -> null);
 
       User result = strategy.findUserAccordingStrategy(mockTaskType);
 
-      assertNotNull(result);
-      assertEquals(mockUser1, result);
-      taskUtils.verify(() -> TaskUtil.updateRoundRobinIndex(mockTaskType, 1, 2));
+      taskUtils.verify(() -> TaskUtil.updateRoundRobinIndex(mockTaskType, expectedNextIndex, totalUsers));
+      return result;
     }
   }
 
+  /**
+   * Sets up common TaskUtil mocks for strategy execution.
+   */
+  private void setupTaskUtilMocks(MockedStatic<TaskUtil> taskUtils, List<User> users, List<Task> tasks) {
+    taskUtils.when(TaskUtil::getActiveUsers).thenReturn(users);
+    taskUtils.when(() -> TaskUtil.preloadTasks(users)).thenReturn(tasks);
+    taskUtils.when(() -> TaskUtil.getStatus("PE")).thenReturn(mockPendingStatus);
+    taskUtils.when(() -> TaskUtil.getStatus("IP")).thenReturn(mockInProgressStatus);
+  }
+
+  /**
+   * Sets up tasks with assigned users and pending status.
+   */
+  private void setupTasksWithUsers() {
+    when(mockTask1.getAssignedUser()).thenReturn(mockUser1);
+    when(mockTask1.getStatus()).thenReturn(mockPendingStatus);
+    when(mockTask2.getAssignedUser()).thenReturn(mockUser2);
+    when(mockTask2.getStatus()).thenReturn(mockPendingStatus);
+  }
+
+  /**
+   * Sets up tasks with mixed statuses (pending, completed, in-progress).
+   */
+  private void setupTasksWithMixedStatuses() {
+    when(mockTask1.getAssignedUser()).thenReturn(mockUser1);
+    when(mockTask1.getStatus()).thenReturn(mockPendingStatus);
+    when(mockTask2.getStatus()).thenReturn(mockCompletedStatus);
+    when(mockTask3.getAssignedUser()).thenReturn(mockUser2);
+    when(mockTask3.getStatus()).thenReturn(mockInProgressStatus);
+  }
 }

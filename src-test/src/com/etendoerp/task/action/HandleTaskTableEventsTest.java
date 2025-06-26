@@ -349,7 +349,7 @@ public class HandleTaskTableEventsTest {
    *     if there is an error during the test execution
    */
   @Test
-  void testHandleTaskTableEvents_CaseInsensitiveTableName() throws Exception {
+  void testHandleTaskTableEventsCaseInsensitiveTableName() throws Exception {
     ActionResult result1 = job.handleTaskTableEvents(
         TaskConstants.TASK_TABLENAME.toLowerCase(), TaskConstants.TABLE_CREATE, norm, after, topics, parameters
     );

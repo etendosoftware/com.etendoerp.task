@@ -16,6 +16,7 @@ package com.etendoerp.task.action;
 
 import static com.etendoerp.task.TaskTestsConstants.MISSING_VERB_MSG;
 import static com.etendoerp.task.TaskTestsConstants.OPERATION_DELETE;
+import static com.etendoerp.task.TaskTestsConstants.OUT_JSON;
 import static com.etendoerp.task.TaskTestsConstants.STATE_ID;
 import static com.etendoerp.task.TaskTestsConstants.TASK_ID;
 import static com.etendoerp.task.TaskTestsConstants.TOPIC1;
@@ -144,7 +145,7 @@ public class TaskTypeMatchJobTest {
     taskInfo.put(TaskConstants.STATE, STATE_ID);
     tasksInfo.add(taskInfo);
 
-    java.lang.reflect.Method method = TaskTypeMatchJob.class.getDeclaredMethod("outJson", List.class, Object.class, List.class);
+    java.lang.reflect.Method method = TaskTypeMatchJob.class.getDeclaredMethod(OUT_JSON, List.class, Object.class, List.class);
     method.setAccessible(true);
     JSONObject result = (JSONObject) method.invoke(job, topics, message, tasksInfo);
 
@@ -176,7 +177,7 @@ public class TaskTypeMatchJobTest {
     JSONObject message = new JSONObject();
     message.put("key", "value");
 
-    java.lang.reflect.Method method = TaskTypeMatchJob.class.getDeclaredMethod("outJson", List.class, Object.class, List.class);
+    java.lang.reflect.Method method = TaskTypeMatchJob.class.getDeclaredMethod(OUT_JSON, List.class, Object.class, List.class);
     method.setAccessible(true);
     JSONObject result = (JSONObject) method.invoke(job, topics, message, null);
 
@@ -195,7 +196,7 @@ public class TaskTypeMatchJobTest {
   public void testOutJsonWithNullValues() throws Exception {
     TaskTypeMatchJob job = new TaskTypeMatchJob();
 
-    java.lang.reflect.Method method = TaskTypeMatchJob.class.getDeclaredMethod("outJson", List.class, Object.class, List.class);
+    java.lang.reflect.Method method = TaskTypeMatchJob.class.getDeclaredMethod(OUT_JSON, List.class, Object.class, List.class);
     method.setAccessible(true);
     JSONObject result = (JSONObject) method.invoke(job, null, null, null);
 
