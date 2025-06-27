@@ -145,6 +145,7 @@ public final class TaskUtil {
       Action act = (Action) clazz.getDeclaredConstructor().newInstance();
 
       Method setParams = Action.class.getDeclaredMethod("setParameters", JSONObject.class);
+      setParams.setAccessible(true);
       setParams.invoke(act, payload);
 
       ActionResult ar = act.run(new Data(), new MutableBoolean(false));
@@ -410,10 +411,12 @@ public final class TaskUtil {
    * @param warehouseTask
    *     The task for which to set the operator.
    */
-  public static void setTaskUser(Task warehouseTask) {
+  public static void setTaskUser(Task warehouseTask) throws JSONException {
+    String paramsStr = warehouseTask.getEventJsoninfo();
+    JSONObject params = new JSONObject(paramsStr);
     TaskType taskType = warehouseTask.getTaskType();
     UserAvailabilityStrategy userStrategy = getUserStrategyClass(taskType);
-    User assignedUser = userStrategy.findUserAccordingStrategy(taskType);
+    User assignedUser = userStrategy.findUserAccordingStrategy(taskType, params);
     warehouseTask.setAssignedUser(assignedUser);
     OBDal.getInstance().save(warehouseTask);
   }
@@ -478,10 +481,6 @@ public final class TaskUtil {
       throw new OBException(OBMessageUtils.getI18NMessage("ETASK_MissingTable"));
     }
     out.put(TaskConstants.TABLE, src.getString(TaskConstants.TABLE));
-
-    if (!parameters.has(TaskConstants.OPERATION) || parameters.getString(TaskConstants.OPERATION).isEmpty()) {
-      throw new OBException(OBMessageUtils.getI18NMessage("ETASK_MissingVerb"));
-    }
     String operation = parameters.getString(TaskConstants.OPERATION);
     String verb;
 
