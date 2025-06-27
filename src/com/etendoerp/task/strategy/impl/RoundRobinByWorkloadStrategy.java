@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.codehaus.jettison.json.JSONObject;
 import org.openbravo.base.exception.OBException;
 import org.openbravo.erpCommon.utility.OBMessageUtils;
 import org.openbravo.model.ad.access.User;
@@ -37,25 +38,29 @@ import com.etendoerp.task.utils.TaskUtil;
  * - `Status`: Helps identify open tasks.
  */
 public class RoundRobinByWorkloadStrategy implements UserAvailabilityStrategy {
+
   /**
-   * Find the user with the minimal current workload assigned to the given task type. The user is chosen
-   * in a round-robin fashion from the ones with the minimal load. The user's workload is calculated as the number
-   * of open tasks assigned to the user. The index of the chosen user is stored in the task type's
-   * {@code rrindex} property.
+   * Finds the user with the lowest workload for the given task type, using round-robin among equally loaded users.
+   *
+   * <p>The workload is calculated as the number of open (pending or in-progress) tasks currently assigned to each user.
+   * Among the users with the minimal number of open tasks, one is selected in round-robin order based on the
+   * {@code rrindex} property of the {@link TaskType}.</p>
    *
    * @param taskType
-   *     the task type for which the user needs to be found
-   * @return the user with the minimal workload assigned to the given task type
+   *     the task type for which to assign a user
+   * @param parameters
+   *     additional input parameters (not used in this strategy)
+   * @return the selected user with the lowest workload
    * @throws OBException
-   *     if no task type is given or if no users are found that are available for the given task type
+   *     if task type is null or no available users are found
    */
   @Override
-  public User findUserAccordingStrategy(TaskType taskType) {
+  public User findUserAccordingStrategy(TaskType taskType, JSONObject parameters) {
     if (taskType == null) {
       throw new OBException(OBMessageUtils.messageBD("ETASK_NoTaskTypeFound"));
     }
 
-    List<User> availableUsers = getUsersAvailable(taskType);
+    List<User> availableUsers = getUsersAvailable(taskType, parameters);
     if (availableUsers.isEmpty()) {
       throw new OBException(OBMessageUtils.messageBD("ETASK_NoUsersFound"));
     }
@@ -64,9 +69,8 @@ public class RoundRobinByWorkloadStrategy implements UserAvailabilityStrategy {
     Map<User, Long> userOpenTasks = computeOpenTasksByUser(allTasks);
     long minLoad = userOpenTasks.values().stream().min(Comparator.naturalOrder()).orElse(0L);
 
-    List<User> minimalLoadOps = availableUsers.stream()
-        .filter(u -> userOpenTasks.getOrDefault(u, 0L) == minLoad)
-        .collect(Collectors.toList());
+    List<User> minimalLoadOps = availableUsers.stream().filter(
+        u -> userOpenTasks.getOrDefault(u, 0L) == minLoad).collect(Collectors.toList());
 
     if (minimalLoadOps.isEmpty()) {
       throw new OBException(OBMessageUtils.messageBD("ETASK_NoAvailableUsersByLoad"));
@@ -75,7 +79,7 @@ public class RoundRobinByWorkloadStrategy implements UserAvailabilityStrategy {
     int currentIndex = (taskType.getRoundRobinIndex() != null) ? taskType.getRoundRobinIndex().intValue() : 0;
     User selectedUser = minimalLoadOps.get(currentIndex);
 
-    TaskUtil.updateRoundRobinIndex(taskType.getId() , currentIndex + 1, minimalLoadOps.size());
+    TaskUtil.updateRoundRobinIndex(taskType.getId(), currentIndex + 1, minimalLoadOps.size());
 
     return selectedUser;
   }
@@ -92,25 +96,25 @@ public class RoundRobinByWorkloadStrategy implements UserAvailabilityStrategy {
     Status pendingStatus = TaskUtil.getStatus("PE");
     Status inProgressStatus = TaskUtil.getStatus("IP");
 
-    return allTasks.stream()
-        .filter(wt -> {
-          Status st = wt.getStatus();
-          return (pendingStatus.equals(st) || inProgressStatus.equals(st));
-        })
-        .collect(Collectors.groupingBy(Task::getAssignedUser, Collectors.counting()));
+    return allTasks.stream().filter(wt -> {
+      Status st = wt.getStatus();
+      return (pendingStatus.equals(st) || inProgressStatus.equals(st));
+    }).collect(Collectors.groupingBy(Task::getAssignedUser, Collectors.counting()));
   }
 
   /**
-   * Retrieves a list of users available for the given task type.
-   * The result is always the list of all active users, regardless of the task type.
-   * <p>
+   * Retrieves the list of users available for the given task type.
+   *
+   * <p>This implementation returns all active users, without filtering by task type or workload.</p>
    *
    * @param taskType
-   *     ignored
-   * @return a list of all active users
+   *     the task type (ignored)
+   * @param parameters
+   *     additional input parameters (ignored)
+   * @return list of all active users
    */
   @Override
-  public List<User> getUsersAvailable(TaskType taskType) {
+  public List<User> getUsersAvailable(TaskType taskType, JSONObject parameters) {
     return TaskUtil.getActiveUsers();
   }
 }

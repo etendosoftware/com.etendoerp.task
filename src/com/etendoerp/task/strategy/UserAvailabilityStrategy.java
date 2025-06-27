@@ -2,6 +2,7 @@ package com.etendoerp.task.strategy;
 
 import java.util.List;
 
+import org.codehaus.jettison.json.JSONObject;
 import org.openbravo.model.ad.access.User;
 
 import com.etendoerp.task.data.TaskType;
@@ -25,22 +26,31 @@ public interface UserAvailabilityStrategy {
 
   /**
    * Finds a user according to the implementing strategy.
-   * The strategy may take into account the availability of users,
-   * and may also take into account the task type.
+   *
+   * <p>The strategy may consider factors such as user availability, workload,
+   * task type, section, or any custom rules. Input parameters may provide
+   * additional context such as shipment, locator, or filters.</p>
    *
    * @param taskType
    *     the task type to find a user for
-   * @return a user that is available for the given task type
+   * @param parameters
+   *     additional input parameters that may influence the strategy
+   * @return a user selected according to the strategy
    */
-  User findUserAccordingStrategy(TaskType taskType);
+  User findUserAccordingStrategy(TaskType taskType, JSONObject parameters);
 
   /**
-   * Get a list of all users available for a given task type.
-   * Availability of a user is determined by the implementing strategy.
+   * Returns a list of all users available for the given task type,
+   * based on the implementing strategy.
+   *
+   * <p>The availability of users may be determined based on task type,
+   * workload, roles, sections, or external input via parameters.</p>
    *
    * @param taskType
-   *     the task type to get users for
-   * @return a list of users available for the given task type
+   *     the task type to get available users for
+   * @param parameters
+   *     additional input parameters that may influence the result
+   * @return a list of users available for the task type
    */
-  List<User> getUsersAvailable(TaskType taskType);
+  List<User> getUsersAvailable(TaskType taskType, JSONObject parameters);
 }
