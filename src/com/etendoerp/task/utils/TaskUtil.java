@@ -411,10 +411,12 @@ public final class TaskUtil {
    * @param warehouseTask
    *     The task for which to set the operator.
    */
-  public static void setTaskUser(Task warehouseTask) {
+  public static void setTaskUser(Task warehouseTask) throws JSONException {
+    String paramsStr = warehouseTask.getEventJsoninfo();
+    JSONObject params = new JSONObject(paramsStr);
     TaskType taskType = warehouseTask.getTaskType();
     UserAvailabilityStrategy userStrategy = getUserStrategyClass(taskType);
-    User assignedUser = userStrategy.findUserAccordingStrategy(taskType);
+    User assignedUser = userStrategy.findUserAccordingStrategy(taskType, params);
     warehouseTask.setAssignedUser(assignedUser);
     OBDal.getInstance().save(warehouseTask);
   }
