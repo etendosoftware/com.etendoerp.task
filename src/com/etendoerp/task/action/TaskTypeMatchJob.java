@@ -11,6 +11,7 @@ import org.codehaus.jettison.json.JSONObject;
 import org.openbravo.base.exception.OBException;
 import org.openbravo.dal.core.OBContext;
 import org.openbravo.dal.service.OBDal;
+import org.openbravo.erpCommon.utility.OBMessageUtils;
 
 import com.etendoerp.task.data.State;
 import com.etendoerp.task.data.Table;
@@ -71,7 +72,18 @@ public class TaskTypeMatchJob extends Action {
 
     try {
       OBContext.setAdminMode(true);
+      actionResult.setType(Result.Type.SUCCESS);
 
+      if (!parameters.has(TaskConstants.OPERATION) || parameters.getString(TaskConstants.OPERATION).isEmpty()) {
+        throw new OBException(OBMessageUtils.getI18NMessage("ETASK_MissingVerb"));
+      }
+      String operation = parameters.getString(TaskConstants.OPERATION);
+
+      //If it is a deleted event, we skip the topic search, as there is no data structure yet available to support this event.
+      if (StringUtils.equals(operation, "d")) {
+        actionResult.setMessage(outJson(null, parameters, null).toString());
+        return actionResult;
+      }
       //Validation and normalization of parameters
       JSONObject norm = TaskUtil.validateAndNormalizeParameters(parameters);
       String table = norm.getString(TaskConstants.TABLE);
@@ -118,7 +130,7 @@ public class TaskTypeMatchJob extends Action {
       if (commit) {
         OBDal.getInstance().commitAndClose();
       }
-      actionResult.setType(Result.Type.SUCCESS);
+
       actionResult.setMessage(outJson(topics, parameters, created).toString());
       return actionResult;
 
@@ -126,8 +138,9 @@ public class TaskTypeMatchJob extends Action {
       OBDal.getInstance().rollbackAndClose();
       log.error("TaskTypeMatchJob error", e);
       actionResult.setType(Result.Type.ERROR);
-      actionResult.setMessage(outJson(null, null, null).toString());
+      actionResult.setMessage(outJson(null, e.getMessage(), null).toString());
       return actionResult;
+
     } finally {
       OBContext.restorePreviousMode();
     }
@@ -184,7 +197,6 @@ public class TaskTypeMatchJob extends Action {
       }
     }
 
-    result.setType(Result.Type.SUCCESS);
     result.setMessage(outJson(topics, parameters, null).toString());
     return result;
   }
@@ -193,23 +205,22 @@ public class TaskTypeMatchJob extends Action {
    * Converts the given input into a JSON object with three fields:
    * <ul>
    *   <li>next - a single string or an array of strings with the next topics to be published.</li>
-   *   <li>message - the message associated with the task creation, or null.</li>
+   *   <li>message - a message string or JSON object associated with the task creation, or null.</li>
    *   <li>state - an array of objects with the task and state information, or null.</li>
    * </ul>
    * <p>
-   * This method is used to create the output JSON object from the action. The method
-   * takes care of converting the input into a JSON object and handling any exceptions
-   * that may occur during the conversion.
+   * This method is used to create the output JSON object from the action. It supports both
+   * raw strings and JSON objects as input for the message field.
    *
    * @param next
    *     the list of topics to be published, or null.
    * @param msg
-   *     the message associated with the task creation, or null.
+   *     the message associated with the task creation (can be a JSONObject, String, or null).
    * @param tasksInfo
-   *     the list of objects with the task and state information, or null.
-   * @return the JSON object with the information.
+   *     the list of task and state objects, or null.
+   * @return the resulting JSON object.
    */
-  private JSONObject outJson(List<String> next, JSONObject msg, List<JSONObject> tasksInfo) {
+  private JSONObject outJson(List<String> next, Object msg, List<JSONObject> tasksInfo) {
     JSONObject resultJsonObj = new JSONObject();
     try {
       if (next == null || next.isEmpty()) {
@@ -219,13 +230,28 @@ public class TaskTypeMatchJob extends Action {
       } else {
         resultJsonObj.put(TaskConstants.NEXT, next);
       }
-      resultJsonObj.put(TaskConstants.MESSAGE, msg == null ? JSONObject.NULL : msg);
-      resultJsonObj.put(TaskConstants.STATE, tasksInfo == null || tasksInfo.isEmpty()
-          ? JSONObject.NULL
-          : new org.codehaus.jettison.json.JSONArray(tasksInfo));
+
+      if (msg == null) {
+        resultJsonObj.put(TaskConstants.MESSAGE, JSONObject.NULL);
+      } else if (msg instanceof JSONObject) {
+        resultJsonObj.put(TaskConstants.MESSAGE, msg);
+      } else if (msg instanceof String) {
+        resultJsonObj.put(TaskConstants.MESSAGE, msg);
+      } else {
+        resultJsonObj.put(TaskConstants.MESSAGE, msg.toString());
+      }
+
+      resultJsonObj.put(
+          TaskConstants.STATE,
+          tasksInfo == null || tasksInfo.isEmpty()
+              ? JSONObject.NULL
+              : new org.codehaus.jettison.json.JSONArray(tasksInfo)
+      );
+
     } catch (Exception e) {
       throw new OBException(e);
     }
+
     return resultJsonObj;
   }
 
