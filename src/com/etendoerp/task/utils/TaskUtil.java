@@ -20,6 +20,7 @@ import org.hibernate.criterion.MatchMode;
 import org.hibernate.criterion.Restrictions;
 import org.openbravo.base.exception.OBException;
 import org.openbravo.base.provider.OBProvider;
+import org.openbravo.base.util.OBClassLoader;
 import org.openbravo.client.application.Process;
 import org.openbravo.dal.core.OBContext;
 import org.openbravo.dal.service.OBCriteria;
@@ -36,6 +37,7 @@ import com.etendoerp.task.data.Status;
 import com.etendoerp.task.data.Table;
 import com.etendoerp.task.data.Task;
 import com.etendoerp.task.data.TaskType;
+import com.etendoerp.task.strategy.UserAvailabilityStrategy;
 import com.smf.jobs.Action;
 import com.smf.jobs.ActionResult;
 import com.smf.jobs.Data;
@@ -59,7 +61,7 @@ import com.smf.jobs.Result;
  * <ul>
  *   <li>{@link OBDal} for data access and persistence operations.</li>
  *   <li>{@link JexlEngine} for dynamic expression evaluation.</li>
- *   <li>{@link com.smf.jobs.Action} for executing custom user-defined logic.</li>
+ *   <li>{@link Action} for executing custom user-defined logic.</li>
  * </ul>
  */
 public final class TaskUtil {
@@ -71,7 +73,7 @@ public final class TaskUtil {
   }
 
   /**
-   * Represents the outcome of executing a scheduled {@link com.smf.jobs.Action}.
+   * Represents the outcome of executing a scheduled {@link Action}.
    *
    * <p>This class is used to encapsulate the result of an action execution,
    * indicating whether it was successful and holding the resulting message, if any.
@@ -80,7 +82,7 @@ public final class TaskUtil {
    * <p>Instances of this class are immutable and are returned from utility methods such as
    * {@link TaskUtil#runAction(Process, JSONObject)}.
    *
-   * @see com.smf.jobs.Action
+   * @see Action
    * @see TaskUtil#runAction(Process, JSONObject)
    */
   public static class ActionOutcome {
@@ -251,6 +253,7 @@ public final class TaskUtil {
     try {
       OBContext.setAdminMode(true);
       OBCriteria<User> userOBCriteria = OBDal.getInstance().createCriteria(User.class);
+      userOBCriteria.add(Restrictions.ne(User.PROPERTY_ID, "0"));
       userOBCriteria.addOrderBy(User.PROPERTY_USERNAME, true);
       return userOBCriteria.list();
     } finally {
@@ -315,20 +318,128 @@ public final class TaskUtil {
    * - `OBDal`: Handles database operations for updating task type data.
    * - `TaskType`: Stores task type information and the round-robin index.
    *
-   * @param taskType
+   * @param taskTypeId
    *     the task type to update
    * @param idx
    *     the new index value
    * @param size
    *     the size of the round-robin list
    */
-  public static void updateRoundRobinIndex(TaskType taskType, int idx, int size) {
+  public static void updateRoundRobinIndex(String taskTypeId, int idx, int size) {
     if (idx >= size) {
       idx = 0;
     }
-    taskType.setRoundRobinIndex((long) idx);
-    OBDal.getInstance().save(taskType);
-    OBDal.getInstance().flush();
+
+    Long newIndex = (long) idx;
+
+    OBContext currentContext = OBContext.getOBContext();
+    try {
+      OBContext.setOBContext("100", "0", "0", "0");
+
+      TaskType taskType = OBDal.getInstance().get(TaskType.class, taskTypeId);
+      taskType.setRoundRobinIndex(newIndex);
+      OBDal.getInstance().save(taskType);
+      OBDal.getInstance().flush();
+    } finally {
+      OBContext.setOBContext(currentContext);
+    }
+  }
+
+  /**
+   * Creates and saves a new {@link Task} with the given type, status, and parameters.
+   * <p>
+   * Uses the provided {@link OBContext} to set client, organization, and user context.
+   * Optionally assigns an operator automatically.
+   * </p>
+   *
+   * @param taskType
+   *     the task type to assign
+   * @param status
+   *     the initial status of the task
+   * @param assignOperatorAutomatically
+   *     whether to assign the operator automatically
+   * @param parameters
+   *     JSON with additional task data (must include client and org IDs)
+   * @param entityContex
+   *     the OBContext to use during task creation
+   * @return the created and persisted {@link Task}
+   * @throws OBException
+   *     if an error occurs during task creation
+   */
+  public static Task createTask(TaskType taskType, Status status, boolean assignOperatorAutomatically,
+      JSONObject parameters, OBContext entityContex) {
+    OBContext.setAdminMode(true);
+    try {
+      OBContext.setOBContext(entityContex);
+      Task task = OBProvider.getInstance().get(Task.class);
+
+      String clientId = parameters.optString("ad_client_id", "");
+      Client client = OBDal.getInstance().get(Client.class, clientId);
+
+      String orgId = parameters.optString("ad_org_id", "");
+      Organization org = OBDal.getInstance().get(Organization.class, orgId);
+      User user = OBContext.getOBContext().getUser();
+
+      task.setTaskType(taskType);
+      task.setStatus(status);
+      task.setClient(client);
+      task.setOrganization(org);
+      task.setCreatedBy(user);
+      task.setUpdatedBy(user);
+      task.setEventJsoninfo(parameters.toString());
+
+      if (assignOperatorAutomatically) {
+        setTaskUser(task);
+      }
+
+      OBDal.getInstance().save(task);
+      OBDal.getInstance().flush();
+      return task;
+    } catch (Exception e) {
+      throw new OBException("Error creating Task: " + e.getMessage(), e);
+    } finally {
+      OBContext.restorePreviousMode();
+    }
+  }
+
+  /**
+   * Sets the operator for the given task based on availability and configuration.
+   *
+   * @param warehouseTask
+   *     The task for which to set the operator.
+   */
+  public static void setTaskUser(Task warehouseTask) throws JSONException {
+    String paramsStr = warehouseTask.getEventJsoninfo();
+    JSONObject params = new JSONObject(paramsStr);
+    TaskType taskType = warehouseTask.getTaskType();
+    UserAvailabilityStrategy userStrategy = getUserStrategyClass(taskType);
+    User assignedUser = userStrategy.findUserAccordingStrategy(taskType, params);
+    warehouseTask.setAssignedUser(assignedUser);
+    OBDal.getInstance().save(warehouseTask);
+  }
+
+  /**
+   * Returns an instance of {@link UserAvailabilityStrategy} based on the Java implementation
+   * defined in the user algorithm associated with the given {@link TaskType}.
+   *
+   * @param taskType
+   *     the task type containing the user assignment strategy
+   * @return an instance of the user availability strategy
+   * @throws OBException
+   *     if the algorithm is missing or the class cannot be loaded or instantiated
+   */
+  public static UserAvailabilityStrategy getUserStrategyClass(TaskType taskType) throws OBException {
+    try {
+      if (taskType.getUserAlgorithm() == null) {
+        throw new OBException(OBMessageUtils.messageBD("ETAWIM_UserAlgorithmNotFound"));
+      }
+      String javaImpl = taskType.getUserAlgorithm().getJavaImplementation();
+      Class<?> clz = OBClassLoader.getInstance().loadClass(javaImpl);
+      return (UserAvailabilityStrategy) clz.getDeclaredConstructor().newInstance();
+    } catch (Exception e) {
+      log.error(e.getMessage());
+      throw new OBException(e.getMessage());
+    }
   }
 
   /**

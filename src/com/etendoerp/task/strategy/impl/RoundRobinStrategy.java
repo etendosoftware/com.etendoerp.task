@@ -2,6 +2,7 @@ package com.etendoerp.task.strategy.impl;
 
 import java.util.List;
 
+import org.codehaus.jettison.json.JSONObject;
 import org.openbravo.base.exception.OBException;
 import org.openbravo.erpCommon.utility.OBMessageUtils;
 import org.openbravo.model.ad.access.User;
@@ -31,50 +32,52 @@ import com.etendoerp.task.utils.TaskUtil;
  * - `User`: Represents the user assigned to a task.
  */
 public class RoundRobinStrategy implements UserAvailabilityStrategy {
+
   /**
-   * Returns the next user that should be assigned a task of the given type,
-   * following a round-robin strategy.
-   * <p>
-   * If no user is available to take tasks of the given type, an exception is
-   * thrown.
-   * <p>
-   * The index of the selected user is stored in the {@code rrindex} column of
-   * the {@code AD_Task_Type} table, and is updated after each call to this
-   * method.
+   * Returns the next user to be assigned a task of the given type,
+   * using a round-robin strategy based on the current index stored in the task type.
+   *
+   * <p>If no users are available, an {@link OBException} is thrown.</p>
+   * <p>The current round-robin index is stored in the {@code rrindex} column
+   * of the {@code AD_Task_Type} table and updated after each assignment.</p>
    *
    * @param taskType
-   *     the type of task to assign
-   * @return the user that should take the task
+   *     the task type to assign a user for
+   * @param parameters
+   *     additional input parameters (not used in this strategy)
+   * @return the selected user according to the round-robin strategy
    * @throws OBException
-   *     if no user is available
+   *     if no users are available
    */
   @Override
-  public User findUserAccordingStrategy(TaskType taskType) {
+  public User findUserAccordingStrategy(TaskType taskType, JSONObject parameters) {
     int currentIndex = (taskType.getRoundRobinIndex() != null) ? taskType.getRoundRobinIndex().intValue() : 0;
 
-    List<User> availableUsers = getUsersAvailable(taskType);
+    List<User> availableUsers = getUsersAvailable(taskType, parameters);
     if (availableUsers.isEmpty()) {
       throw new OBException(OBMessageUtils.messageBD("ETASK_NoUsersFound"));
     }
 
     User selectedUser = availableUsers.get(currentIndex);
 
-    TaskUtil.updateRoundRobinIndex(taskType, currentIndex + 1, availableUsers.size());
+    TaskUtil.updateRoundRobinIndex(taskType.getId(), currentIndex + 1, availableUsers.size());
 
     return selectedUser;
   }
 
   /**
-   * Retrieves a list of users available for the given task type.
-   * The result is always the list of all active users, regardless of the task type.
-   * <p>
+   * Retrieves the list of users available for the given task type.
+   *
+   * <p>This implementation always returns all active users, regardless of task type or parameters.</p>
    *
    * @param taskType
-   *     ignored
-   * @return a list of all active users
+   *     the task type (ignored)
+   * @param parameters
+   *     additional input parameters (ignored)
+   * @return list of all active users
    */
   @Override
-  public List<User> getUsersAvailable(TaskType taskType) {
+  public List<User> getUsersAvailable(TaskType taskType, JSONObject parameters) {
     return TaskUtil.getActiveUsers();
   }
 }
