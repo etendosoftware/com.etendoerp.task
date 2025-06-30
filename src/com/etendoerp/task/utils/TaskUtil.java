@@ -26,14 +26,11 @@ import org.openbravo.dal.core.OBContext;
 import org.openbravo.dal.service.OBCriteria;
 import org.openbravo.dal.service.OBDal;
 import org.openbravo.erpCommon.utility.OBMessageUtils;
-import org.openbravo.model.ad.access.Role;
 import org.openbravo.model.ad.access.User;
-import org.openbravo.model.ad.access.UserRoles;
 import org.openbravo.model.ad.domain.Reference;
 import org.openbravo.model.ad.system.Client;
 import org.openbravo.model.common.enterprise.Organization;
 
-import com.etendoerp.advanced.warehouse.management.utils.TaskUtils;
 import com.etendoerp.task.data.Events;
 import com.etendoerp.task.data.State;
 import com.etendoerp.task.data.Status;
