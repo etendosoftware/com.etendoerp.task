@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import org.codehaus.jettison.json.JSONObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -58,6 +59,7 @@ public class RoundRobinByWorkloadStrategyTest {
   @Mock private Status mockPendingStatus;
   @Mock private Status mockInProgressStatus;
   @Mock private Status mockCompletedStatus;
+  @Mock private JSONObject mockParameters;
 
   private RoundRobinByWorkloadStrategy strategy;
   private List<User> twoUsers;
@@ -78,7 +80,7 @@ public class RoundRobinByWorkloadStrategyTest {
     try (MockedStatic<OBMessageUtils> msgUtils = mockStatic(OBMessageUtils.class)) {
       msgUtils.when(() -> OBMessageUtils.messageBD("ETASK_NoTaskTypeFound")).thenReturn(NO_TASK_TYPE_ERROR);
 
-      OBException exception = assertThrows(OBException.class, () -> strategy.findUserAccordingStrategy(null));
+      OBException exception = assertThrows(OBException.class, () -> strategy.findUserAccordingStrategy(null, mockParameters));
       assertEquals(NO_TASK_TYPE_ERROR, exception.getMessage());
     }
   }
@@ -94,7 +96,7 @@ public class RoundRobinByWorkloadStrategyTest {
       taskUtils.when(TaskUtil::getActiveUsers).thenReturn(Collections.emptyList());
       msgUtils.when(() -> OBMessageUtils.messageBD("ETASK_NoUsersFound")).thenReturn(NO_USERS_ERROR);
 
-      OBException exception = assertThrows(OBException.class, () -> strategy.findUserAccordingStrategy(mockTaskType));
+      OBException exception = assertThrows(OBException.class, () -> strategy.findUserAccordingStrategy(mockTaskType, mockParameters));
       assertEquals(NO_USERS_ERROR, exception.getMessage());
     }
   }
@@ -144,7 +146,7 @@ public class RoundRobinByWorkloadStrategyTest {
     try (MockedStatic<TaskUtil> taskUtils = mockStatic(TaskUtil.class)) {
       taskUtils.when(TaskUtil::getActiveUsers).thenReturn(threeUsers);
 
-      List<User> result = strategy.getUsersAvailable(mockTaskType);
+      List<User> result = strategy.getUsersAvailable(mockTaskType, mockParameters);
 
       assertEquals(threeUsers, result);
       assertEquals(3, result.size());
@@ -160,7 +162,7 @@ public class RoundRobinByWorkloadStrategyTest {
     try (MockedStatic<TaskUtil> taskUtils = mockStatic(TaskUtil.class)) {
       taskUtils.when(TaskUtil::getActiveUsers).thenReturn(Collections.emptyList());
 
-      List<User> result = strategy.getUsersAvailable(mockTaskType);
+      List<User> result = strategy.getUsersAvailable(mockTaskType, mockParameters);
 
       assertEquals(Collections.emptyList(), result);
       assertEquals(0, result.size());
@@ -185,15 +187,16 @@ public class RoundRobinByWorkloadStrategyTest {
   private User executeStrategyWithMockedUtils(List<User> users, List<Task> tasks, long initialIndex,
       int expectedNextIndex, int totalUsers) {
     when(mockTaskType.getRoundRobinIndex()).thenReturn(initialIndex);
+    when(mockTaskType.getId()).thenReturn("task-type-id-test");
 
     try (MockedStatic<TaskUtil> taskUtils = mockStatic(TaskUtil.class)) {
       setupTaskUtilMocks(taskUtils, users, tasks);
-      taskUtils.when(() -> TaskUtil.updateRoundRobinIndex(mockTaskType, expectedNextIndex, totalUsers))
+      taskUtils.when(() -> TaskUtil.updateRoundRobinIndex("task-type-id-test", expectedNextIndex, totalUsers))
           .thenAnswer(inv -> null);
 
-      User result = strategy.findUserAccordingStrategy(mockTaskType);
+      User result = strategy.findUserAccordingStrategy(mockTaskType, mockParameters);
 
-      taskUtils.verify(() -> TaskUtil.updateRoundRobinIndex(mockTaskType, expectedNextIndex, totalUsers));
+      taskUtils.verify(() -> TaskUtil.updateRoundRobinIndex("task-type-id-test", expectedNextIndex, totalUsers));
       return result;
     }
   }
