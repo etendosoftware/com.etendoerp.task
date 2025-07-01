@@ -429,16 +429,23 @@ public final class TaskUtil {
    *     if the algorithm is missing or the class cannot be loaded or instantiated
    */
   public static UserAvailabilityStrategy getUserStrategyClass(TaskType taskType) throws OBException {
+    OBContext currentContext = OBContext.getOBContext();
     try {
+      OBContext.setOBContext("100", "0", "0", "0");
+
       if (taskType.getUserAlgorithm() == null) {
         throw new OBException(OBMessageUtils.messageBD("ETAWIM_UserAlgorithmNotFound"));
       }
+
       String javaImpl = taskType.getUserAlgorithm().getJavaImplementation();
       Class<?> clz = OBClassLoader.getInstance().loadClass(javaImpl);
       return (UserAvailabilityStrategy) clz.getDeclaredConstructor().newInstance();
+
     } catch (Exception e) {
-      log.error(e.getMessage());
+      log.error(e.getMessage(), e);
       throw new OBException(e.getMessage());
+    } finally {
+      OBContext.setOBContext(currentContext);
     }
   }
 
