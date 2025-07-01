@@ -165,7 +165,7 @@ public class TaskTypeMatchJob extends Action {
    * @throws Exception
    *     If any error occurs during the execution of this method.
    */
-  private ActionResult handleTaskTableEvents(String table, String verb, JSONObject norm, JSONObject after,
+  protected ActionResult handleTaskTableEvents(String table, String verb, JSONObject norm, JSONObject after,
       List<String> topics, JSONObject parameters) throws Exception {
     if (!StringUtils.equalsIgnoreCase(TaskConstants.TASK_TABLENAME, table)) {
       return null;
