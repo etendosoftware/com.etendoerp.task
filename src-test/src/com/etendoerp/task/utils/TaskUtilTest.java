@@ -35,6 +35,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 
+import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.hibernate.criterion.Restrictions;
 import org.junit.jupiter.api.Test;
@@ -145,10 +146,103 @@ public class TaskUtilTest {
   private OBCriteria<Events> mockEventsCriteria;
 
   /**
+   * Helper method to setup common OBDal mock behavior.
+   */
+  private MockedStatic<OBDal> setupOBDalMock() {
+    MockedStatic<OBDal> dalStatic = mockStatic(OBDal.class);
+    dalStatic.when(OBDal::getInstance).thenReturn(mockDal);
+    return dalStatic;
+  }
+
+  /**
+   * Helper method to setup common OBContext mock behavior.
+   */
+  private MockedStatic<OBContext> setupOBContextMock() {
+    MockedStatic<OBContext> contextStatic = mockStatic(OBContext.class);
+    contextStatic.when(() -> OBContext.setAdminMode(true)).then(invocation -> null);
+    contextStatic.when(OBContext::restorePreviousMode).then(invocation -> null);
+    return contextStatic;
+  }
+
+  /**
+   * Helper method to setup common OBMessageUtils mock behavior for exceptions.
+   */
+  private MockedStatic<OBMessageUtils> setupMessageUtilsMock(String messageKey, String messageValue) {
+    MockedStatic<OBMessageUtils> msgUtils = mockStatic(OBMessageUtils.class);
+    msgUtils.when(() -> OBMessageUtils.messageBD(messageKey)).thenReturn(messageValue);
+    msgUtils.when(() -> OBMessageUtils.getI18NMessage(messageKey)).thenReturn(messageValue);
+    return msgUtils;
+  }
+
+  /**
+   * Helper method to setup criteria mock with common behavior.
+   */
+  private <T extends org.openbravo.base.structure.BaseOBObject> void setupCriteriaMock(OBCriteria<T> criteria,
+      T result) {
+    when(criteria.setMaxResults(1)).thenReturn(criteria);
+    when(criteria.uniqueResult()).thenReturn(result);
+  }
+
+  /**
+   * Helper method to setup criteria mock with list result.
+   */
+  private <T extends org.openbravo.base.structure.BaseOBObject> void setupCriteriaListMock(OBCriteria<T> criteria,
+      List<T> result) {
+    when(criteria.list()).thenReturn(result);
+  }
+
+  /**
+   * Helper method to setup criteria mock with ordering.
+   */
+  private <T extends org.openbravo.base.structure.BaseOBObject> void setupCriteriaWithOrdering(OBCriteria<T> criteria,
+      String property, boolean ascending) {
+    when(criteria.addOrderBy(property, ascending)).thenReturn(criteria);
+  }
+
+  /**
+   * Helper method to create a JSONObject with client and org data.
+   */
+  private JSONObject createBasicTaskData() throws JSONException {
+    JSONObject data = new JSONObject();
+    data.put(TaskConstants.AD_CLIENT_ATTR, CLIENT_123);
+    data.put(TaskConstants.AD_ORG_ATTR, ORG_ID);
+    return data;
+  }
+
+  /**
+   * Helper method to setup common mocks for task creation.
+   */
+  private void setupTaskCreationMocks() {
+    when(mockProvider.get(Task.class)).thenReturn(mockTask);
+    when(mockDal.get(Client.class, CLIENT_123)).thenReturn(mockClient);
+    when(mockDal.get(Organization.class, ORG_ID)).thenReturn(mockOrganization);
+
+  }
+
+  /**
+   * Helper method to verify common task creation behavior.
+   */
+  private void verifyTaskCreation() {
+    verify(mockTask).setTaskType(mockTaskType);
+    verify(mockTask).setStatus(mockStatus);
+    verify(mockTask).setClient(mockClient);
+    verify(mockTask).setOrganization(mockOrganization);
+  }
+
+  /**
+   * Helper method to assert OBException with message content.
+   */
+  private void assertOBExceptionContains(String expectedContent, Runnable action) {
+    OBException exception = assertThrows(OBException.class, action::run);
+    assertTrue(exception.getMessage().contains(expectedContent));
+  }
+
+  /**
    * Tests the validation of a filter with a valid expression that evaluates to true.
    * This should return true when the filter condition is met by the provided data.
    *
-   * @throws Exception if there's an error during filter validation
+   * @throws Exception
+   *     if there's an error during filter validation
    */
   @Test
   public void testValidateFilterWithValidFilter() throws Exception {
@@ -173,11 +267,13 @@ public class TaskUtilTest {
 
     assertFalse(result);
   }
+
   /**
    * Tests the validation of a filter that returns a non-boolean result.
    * This should return false when the filter expression evaluates to a non-boolean value.
    *
-   * @throws Exception if there's an error during filter evaluation
+   * @throws Exception
+   *     if there's an error during filter evaluation
    */
   @Test
   public void testValidateFilterWithNonBooleanResult() throws Exception {
@@ -203,20 +299,19 @@ public class TaskUtilTest {
   }
 
   /**
-   * Tests the execution of advanced logic with a valid action.
-   * This should return true if the action is executed successfully.
+   * Tests the retrieval of active users.
+   * This should return a list of active users.
    */
   @Test
   public void testGetActiveUsers() {
     List<User> expectedUsers = List.of(mockUser);
 
-    try (MockedStatic<OBDal> dalStatic = mockStatic(OBDal.class);
-         MockedStatic<OBContext> contextStatic = mockStatic(OBContext.class)) {
+    try (MockedStatic<OBDal> ignored = setupOBDalMock();
+         MockedStatic<OBContext> contextStatic = setupOBContextMock()) {
 
-      dalStatic.when(OBDal::getInstance).thenReturn(mockDal);
       when(mockDal.createCriteria(User.class)).thenReturn(mockUserCriteria);
-      when(mockUserCriteria.addOrderBy(User.PROPERTY_USERNAME, true)).thenReturn(mockUserCriteria);
-      when(mockUserCriteria.list()).thenReturn(expectedUsers);
+      setupCriteriaWithOrdering(mockUserCriteria, User.PROPERTY_USERNAME, true);
+      setupCriteriaListMock(mockUserCriteria, expectedUsers);
 
       List<User> result = TaskUtil.getActiveUsers();
 
@@ -227,20 +322,19 @@ public class TaskUtilTest {
   }
 
   /**
-   * Tests the retrieval of active users when no users are found.
-   * This should return an empty list.
+   * Tests the preloading of tasks for given users.
+   * This should return a list of tasks assigned to the users.
    */
   @Test
   public void testPreloadTasks() {
     List<User> users = List.of(mockUser);
     List<Task> expectedTasks = List.of(mockTask);
 
-    try (MockedStatic<OBDal> dalStatic = mockStatic(OBDal.class);
+    try (MockedStatic<OBDal> ignored = setupOBDalMock();
          MockedStatic<Restrictions> restrictionsStatic = mockStatic(Restrictions.class)) {
 
-      dalStatic.when(OBDal::getInstance).thenReturn(mockDal);
       when(mockDal.createCriteria(Task.class)).thenReturn(mockTaskCriteria);
-      when(mockTaskCriteria.list()).thenReturn(expectedTasks);
+      setupCriteriaListMock(mockTaskCriteria, expectedTasks);
 
       List<Task> result = TaskUtil.preloadTasks(users);
 
@@ -250,20 +344,18 @@ public class TaskUtilTest {
   }
 
   /**
-   * Tests the retrieval of tasks when no tasks are found.
-   * This should return an empty list.
+   * Tests the retrieval of a status by identifier when found.
+   * This should return the status if it exists.
    */
   @Test
   public void testGetStatusFound() {
     String identifier = "OPEN";
 
-    try (MockedStatic<OBDal> dalStatic = mockStatic(OBDal.class);
+    try (MockedStatic<OBDal> ignored = setupOBDalMock();
          MockedStatic<Restrictions> restrictionsStatic = mockStatic(Restrictions.class)) {
 
-      dalStatic.when(OBDal::getInstance).thenReturn(mockDal);
       when(mockDal.createCriteria(Status.class)).thenReturn(mockStatusCriteria);
-      when(mockStatusCriteria.setMaxResults(1)).thenReturn(mockStatusCriteria);
-      when(mockStatusCriteria.uniqueResult()).thenReturn(mockStatus);
+      setupCriteriaMock(mockStatusCriteria, mockStatus);
 
       Status result = TaskUtil.getStatus(identifier);
 
@@ -280,28 +372,28 @@ public class TaskUtilTest {
   public void testGetStatusNotFound() {
     String identifier = "UNKNOWN";
 
-    try (MockedStatic<OBDal> dalStatic = mockStatic(OBDal.class)) {
-      dalStatic.when(OBDal::getInstance).thenReturn(mockDal);
+    try (MockedStatic<OBDal> ignored = setupOBDalMock()) {
       when(mockDal.createCriteria(Status.class)).thenReturn(mockStatusCriteria);
-      when(mockStatusCriteria.setMaxResults(1)).thenReturn(mockStatusCriteria);
-      when(mockStatusCriteria.uniqueResult()).thenReturn(null);
+      setupCriteriaMock(mockStatusCriteria, null);
 
       Status result = TaskUtil.getStatus(identifier);
 
       assertNull(result);
     }
   }
+
   /**
    * Tests the validation and normalization of parameters with valid input data.
    * This should successfully validate and normalize the parameters, setting the
    * appropriate table name and verb based on the operation.
    *
-   * @throws Exception if there's an error during parameter validation or normalization
+   * @throws Exception
+   *     if there's an error during parameter validation or normalization
    */
   @Test
   public void testValidateAndNormalizeParametersValid() throws Exception {
     JSONObject parameters = new JSONObject();
-    JSONObject source = new JSONObject().put(TaskConstants.TABLE,TEST_TABLE);
+    JSONObject source = new JSONObject().put(TaskConstants.TABLE, TEST_TABLE);
     parameters.put(TaskConstants.SOURCE, source);
     parameters.put(TaskConstants.OPERATION, "c");
     parameters.put(TaskConstants.AFTER, new JSONObject().put("id", "123"));
@@ -312,6 +404,7 @@ public class TaskUtilTest {
     assertEquals(TaskConstants.TABLE_CREATE, result.getString(TaskConstants.VERB));
     assertTrue(result.has(TaskConstants.AFTER));
   }
+
   /**
    * Tests the validation and normalization of parameters when the source is missing.
    * This should throw an OBException with a specific error message.
@@ -320,114 +413,111 @@ public class TaskUtilTest {
   public void testValidateAndNormalizeParametersMissingSource() {
     JSONObject parameters = new JSONObject();
 
-    try (MockedStatic<OBMessageUtils> msgUtils = mockStatic(OBMessageUtils.class)) {
-      msgUtils.when(() -> OBMessageUtils.getI18NMessage("ETASK_MissingSource")).thenReturn("Missing source");
-
-      OBException exception = assertThrows(OBException.class,
-          () -> TaskUtil.validateAndNormalizeParameters(parameters));
-      assertEquals("Missing source", exception.getMessage());
+    try (MockedStatic<OBMessageUtils> ignored = setupMessageUtilsMock("ETASK_MissingSource", "Missing source")) {
+      assertOBExceptionContains("Missing source", () -> {
+        try {
+          TaskUtil.validateAndNormalizeParameters(parameters);
+        } catch (JSONException e) {
+          throw new RuntimeException(e);
+        }
+      });
     }
   }
+
   /**
    * Tests the validation and normalization of parameters with an invalid operation.
    * This should throw an OBException when an unsupported database operation is provided.
    *
-   * @throws Exception if there's an error during parameter validation
-   * @throws OBException when an invalid operation is specified
+   * @throws Exception
+   *     if there's an error during parameter validation
+   * @throws OBException
+   *     when an invalid operation is specified
    */
   @Test
   public void testValidateAndNormalizeParametersInvalidOperation() throws Exception {
     JSONObject parameters = new JSONObject();
-    JSONObject source = new JSONObject().put(TaskConstants.TABLE,TEST_TABLE);
+    JSONObject source = new JSONObject().put(TaskConstants.TABLE, TEST_TABLE);
     parameters.put(TaskConstants.SOURCE, source);
     parameters.put(TaskConstants.OPERATION, "x");
     parameters.put(TaskConstants.AFTER, new JSONObject());
 
-    try (MockedStatic<OBMessageUtils> msgUtils = mockStatic(OBMessageUtils.class)) {
-      msgUtils.when(() -> OBMessageUtils.messageBD("ETASK_InvalidDatabaseOperation")).thenReturn(
-          "Invalid operation: %s");
-
-      OBException exception = assertThrows(OBException.class,
-          () -> TaskUtil.validateAndNormalizeParameters(parameters));
-      assertTrue(exception.getMessage().contains("x"));
+    try (MockedStatic<OBMessageUtils> msgUtils = setupMessageUtilsMock("ETASK_InvalidDatabaseOperation",
+        "Invalid operation: %s")) {
+      assertOBExceptionContains("x", () -> {
+        try {
+          TaskUtil.validateAndNormalizeParameters(parameters);
+        } catch (JSONException e) {
+          throw new RuntimeException(e);
+        }
+      });
     }
   }
+
   /**
    * Tests the creation of a task with valid input parameters.
    * This should successfully create a new Task object with the provided data,
    * setting all required fields including client, organization, and user references.
    *
-   * @throws Exception if there's an error during task creation or data access
+   * @throws Exception
+   *     if there's an error during task creation or data access
    */
   @Test
   public void testCreateTask() throws Exception {
-    JSONObject data = new JSONObject();
-    data.put(TaskConstants.AD_CLIENT_ATTR, CLIENT_123);
-    data.put(TaskConstants.AD_ORG_ATTR, ORG_ID);
+    JSONObject data = createBasicTaskData();
     JSONObject rawEvent = new JSONObject().put("event", "test");
+    when(mockDal.get(User.class, TaskConstants.ADMIN_USER)).thenReturn(mockUser);
+    when(mockTable.getTaskType()).thenReturn(mockTaskType);
+    when(mockState.getTaskStatus()).thenReturn(mockStatus);
 
-    try (MockedStatic<OBDal> dalStatic = mockStatic(OBDal.class);
+    try (MockedStatic<OBDal> ignored = setupOBDalMock();
          MockedStatic<OBProvider> providerStatic = mockStatic(OBProvider.class)) {
 
-      dalStatic.when(OBDal::getInstance).thenReturn(mockDal);
       providerStatic.when(OBProvider::getInstance).thenReturn(mockProvider);
-
-      when(mockProvider.get(Task.class)).thenReturn(mockTask);
-      when(mockDal.get(Client.class, CLIENT_123)).thenReturn(mockClient);
-      when(mockDal.get(Organization.class, ORG_ID)).thenReturn(mockOrganization);
-      when(mockDal.get(User.class, TaskConstants.ADMIN_USER)).thenReturn(mockUser);
-
-      when(mockTable.getTaskType()).thenReturn(mockTaskType);
-      when(mockState.getTaskStatus()).thenReturn(mockStatus);
+      setupTaskCreationMocks();
 
       Task result = TaskUtil.createTask(mockTable, mockState, data, rawEvent, true);
 
       assertEquals(mockTask, result);
-      verify(mockTask).setTaskType(mockTaskType);
-      verify(mockTask).setStatus(mockStatus);
+      verifyTaskCreation();
       verify(mockTask).setCreatedAutomatically(true);
       verify(mockTask).setEventJsoninfo(rawEvent.toString());
-      verify(mockTask).setClient(mockClient);
-      verify(mockTask).setOrganization(mockOrganization);
     }
   }
+
   /**
    * Tests the creation of a task when the client attribute is missing from the data.
    * This should throw an OBException indicating that the required client attribute
    * is missing from the event data.
    *
-   * @throws Exception if there's an error during task creation validation
-   * @throws OBException when the required client attribute is missing
+   * @throws Exception
+   *     if there's an error during task creation validation
+   * @throws OBException
+   *     when the required client attribute is missing
    */
   @Test
   public void testCreateTaskMissingClient() throws Exception {
     JSONObject data = new JSONObject();
     data.put(TaskConstants.AD_ORG_ATTR, ORG_ID);
 
-    try (MockedStatic<OBMessageUtils> msgUtils = mockStatic(OBMessageUtils.class)) {
-      msgUtils.when(() -> OBMessageUtils.messageBD("ETASK_MissingAttributeInEventData")).thenReturn(
-          "Missing attribute: %s");
-
-      OBException exception = assertThrows(OBException.class,
+    try (MockedStatic<OBMessageUtils> msgUtils = setupMessageUtilsMock("ETASK_MissingAttributeInEventData",
+        "Missing attribute: %s")) {
+      assertOBExceptionContains(TaskConstants.AD_CLIENT_ATTR,
           () -> TaskUtil.createTask(mockTable, mockState, data, null, false));
-      assertTrue(exception.getMessage().contains(TaskConstants.AD_CLIENT_ATTR));
     }
   }
 
   /**
-   * Tests the creation of a task with a missing organization.
-   * This should throw an OBException with a specific error message.
+   * Tests the retrieval of initial state when found.
+   * This should return the initial state for the task type.
    */
   @Test
   public void testGetInitialStateFound() {
-    try (MockedStatic<OBDal> dalStatic = mockStatic(OBDal.class);
+    try (MockedStatic<OBDal> ignored = setupOBDalMock();
          MockedStatic<Restrictions> restrictionsStatic = mockStatic(Restrictions.class)) {
 
-      dalStatic.when(OBDal::getInstance).thenReturn(mockDal);
       when(mockDal.createCriteria(State.class)).thenReturn(mockStateCriteria);
-      when(mockStateCriteria.addOrderBy(State.PROPERTY_SEQUENCENO, true)).thenReturn(mockStateCriteria);
-      when(mockStateCriteria.setMaxResults(1)).thenReturn(mockStateCriteria);
-      when(mockStateCriteria.uniqueResult()).thenReturn(mockState);
+      setupCriteriaWithOrdering(mockStateCriteria, State.PROPERTY_SEQUENCENO, true);
+      setupCriteriaMock(mockStateCriteria, mockState);
 
       State result = TaskUtil.getInitialState(mockTaskType);
 
@@ -442,54 +532,47 @@ public class TaskUtilTest {
    */
   @Test
   public void testGetInitialStateNotFound() {
-    try (MockedStatic<OBDal> dalStatic = mockStatic(OBDal.class);
-         MockedStatic<OBMessageUtils> msgUtils = mockStatic(OBMessageUtils.class)) {
+    try (MockedStatic<OBDal> ignored = setupOBDalMock();
+         MockedStatic<OBMessageUtils> ignored1 = setupMessageUtilsMock("ETASK_NoInitialState", "No initial state")) {
 
-      dalStatic.when(OBDal::getInstance).thenReturn(mockDal);
       when(mockDal.createCriteria(State.class)).thenReturn(mockStateCriteria);
-      when(mockStateCriteria.addOrderBy(State.PROPERTY_SEQUENCENO, true)).thenReturn(mockStateCriteria);
-      when(mockStateCriteria.setMaxResults(1)).thenReturn(mockStateCriteria);
-      when(mockStateCriteria.uniqueResult()).thenReturn(null);
-      msgUtils.when(() -> OBMessageUtils.getI18NMessage("ETASK_NoInitialState")).thenReturn("No initial state");
+      setupCriteriaWithOrdering(mockStateCriteria, State.PROPERTY_SEQUENCENO, true);
+      setupCriteriaMock(mockStateCriteria, null);
 
-      OBException exception = assertThrows(OBException.class,
-          () -> TaskUtil.getInitialState(mockTaskType));
-      assertEquals("No initial state", exception.getMessage());
+      assertOBExceptionContains("No initial state", () -> TaskUtil.getInitialState(mockTaskType));
     }
   }
+
   /**
    * Tests the retrieval of an AD Table by its name.
    * This should return the AD Table if found.
    */
   @Test
   public void testGetADTableFound() {
-    String tableName =TEST_TABLE;
+    String tableName = TEST_TABLE;
 
-    try (MockedStatic<OBDal> dalStatic = mockStatic(OBDal.class)) {
-      dalStatic.when(OBDal::getInstance).thenReturn(mockDal);
+    try (MockedStatic<OBDal> ignored = setupOBDalMock()) {
       when(mockDal.createCriteria(org.openbravo.model.ad.datamodel.Table.class)).thenReturn(mockADTableCriteria);
-      when(mockADTableCriteria.setMaxResults(1)).thenReturn(mockADTableCriteria);
-      when(mockADTableCriteria.uniqueResult()).thenReturn(mockADTable);
+      setupCriteriaMock(mockADTableCriteria, mockADTable);
 
       org.openbravo.model.ad.datamodel.Table result = TaskUtil.getADTable(tableName);
 
       assertEquals(mockADTable, result);
     }
   }
+
   /**
-   * Tests the retrieval of an AD Table by its name when the table is not found.
-   * This should throw an OBException with a specific error message.
+   * Tests the retrieval of event value when found.
+   * This should return the event value for the verb.
    */
   @Test
   public void testGetEventValueFound() {
     String verb = "CREATE";
 
-    try (MockedStatic<OBDal> dalStatic = mockStatic(OBDal.class)) {
-      dalStatic.when(OBDal::getInstance).thenReturn(mockDal);
+    try (MockedStatic<OBDal> ignored = setupOBDalMock()) {
       when(mockDal.get(Reference.class, TaskConstants.TABLE_EVENTS_REF)).thenReturn(mockReference);
       when(mockDal.createCriteria(org.openbravo.model.ad.domain.List.class)).thenReturn(mockListCriteria);
-      when(mockListCriteria.setMaxResults(1)).thenReturn(mockListCriteria);
-      when(mockListCriteria.uniqueResult()).thenReturn(mockList);
+      setupCriteriaMock(mockListCriteria, mockList);
       when(mockList.getSearchKey()).thenReturn("C");
 
       String result = TaskUtil.getEventValue(verb);
@@ -497,47 +580,47 @@ public class TaskUtilTest {
       assertEquals("C", result);
     }
   }
+
   /**
-   * Tests the retrieval of an event value when the verb is not found.
-   * This should throw an OBException with a specific error message.
+   * Tests the retrieval of matching rules.
+   * This should return a list of matching table rules.
    */
   @Test
   public void testGetMatchingRules() {
     String eventIdentifier = "CREATE";
     List<Table> expectedRules = List.of(mockTable);
 
-    try (MockedStatic<OBDal> dalStatic = mockStatic(OBDal.class)) {
-      dalStatic.when(OBDal::getInstance).thenReturn(mockDal);
+    try (MockedStatic<OBDal> ignored = setupOBDalMock()) {
       when(mockDal.createCriteria(Table.class)).thenReturn(mockTableCriteria);
-      when(mockTableCriteria.list()).thenReturn(expectedRules);
+      setupCriteriaListMock(mockTableCriteria, expectedRules);
 
       List<Table> result = TaskUtil.getMatchingRules(mockADTable, eventIdentifier);
 
       assertEquals(expectedRules, result);
     }
   }
+
   /**
-   * Tests the retrieval of an event value when the verb is not found.
-   * This should throw an OBException with a specific error message.
+   * Tests finding state by status ID.
+   * This should return the state for the given status and task type.
    */
   @Test
   public void testFindStateByStatusId() {
     String statusId = "status123";
     String taskTypeId = TASK_TYPE_123;
 
-    try (MockedStatic<OBDal> dalStatic = mockStatic(OBDal.class)) {
-      dalStatic.when(OBDal::getInstance).thenReturn(mockDal);
+    try (MockedStatic<OBDal> ignored = setupOBDalMock()) {
       when(mockDal.get(TaskType.class, taskTypeId)).thenReturn(mockTaskType);
       when(mockDal.createCriteria(State.class)).thenReturn(mockStateCriteria);
       when(mockStateCriteria.createAlias(State.PROPERTY_TASKSTATUS, "st")).thenReturn(mockStateCriteria);
-      when(mockStateCriteria.setMaxResults(1)).thenReturn(mockStateCriteria);
-      when(mockStateCriteria.uniqueResult()).thenReturn(mockState);
+      setupCriteriaMock(mockStateCriteria, mockState);
 
       State result = TaskUtil.findStateByStatusId(statusId, taskTypeId);
 
       assertEquals(mockState, result);
     }
   }
+
   /**
    * Tests the execution of an action process when the class name is blank.
    * This should throw an OBException.
@@ -547,32 +630,26 @@ public class TaskUtilTest {
     when(mockProcess.getJavaClassName()).thenReturn("");
     when(mockProcess.getName()).thenReturn(TEST_PROCESS);
 
-    try (MockedStatic<OBMessageUtils> msgUtils = mockStatic(OBMessageUtils.class)) {
-      msgUtils.when(() -> OBMessageUtils.messageBD("ETASK_ProcessWithoutClassName")).thenReturn("Process %s has no class name");
-
-      OBException exception = assertThrows(OBException.class,
-          () -> TaskUtil.runAction(mockProcess, new JSONObject()));
-      assertTrue(exception.getMessage().contains(TEST_PROCESS));
+    try (MockedStatic<OBMessageUtils> ignored = setupMessageUtilsMock("ETASK_ProcessWithoutClassName",
+        "Process %s has no class name")) {
+      assertOBExceptionContains(TEST_PROCESS, () -> TaskUtil.runAction(mockProcess, new JSONObject()));
     }
   }
+
   /**
    * Tests the update of round-robin index with a normal index value.
    * This should successfully update the task type's round-robin index.
-   *
-   * @throws Exception if there's an error during the update
    */
   @Test
-  public void testUpdateRoundRobinIndexNormal() throws Exception {
+  public void testUpdateRoundRobinIndexNormal() {
     String taskTypeId = TASK_TYPE_123;
     int idx = 2;
     int size = 5;
 
-    try (MockedStatic<OBDal> dalStatic = mockStatic(OBDal.class);
+    try (MockedStatic<OBDal> ignored = setupOBDalMock();
          MockedStatic<OBContext> contextStatic = mockStatic(OBContext.class)) {
 
       OBContext mockCurrentContext = mock(OBContext.class);
-
-      dalStatic.when(OBDal::getInstance).thenReturn(mockDal);
       contextStatic.when(OBContext::getOBContext).thenReturn(mockCurrentContext);
       when(mockDal.get(TaskType.class, taskTypeId)).thenReturn(mockTaskType);
 
@@ -589,7 +666,6 @@ public class TaskUtilTest {
   /**
    * Tests the update of round-robin index when the index exceeds the size.
    * This should reset the index to 0.
-   *
    */
   @Test
   public void testUpdateRoundRobinIndexOversize() {
@@ -597,12 +673,10 @@ public class TaskUtilTest {
     int idx = 5;
     int size = 3;
 
-    try (MockedStatic<OBDal> dalStatic = mockStatic(OBDal.class);
+    try (MockedStatic<OBDal> ignored = setupOBDalMock();
          MockedStatic<OBContext> contextStatic = mockStatic(OBContext.class)) {
 
       OBContext mockCurrentContext = mock(OBContext.class);
-
-      dalStatic.when(OBDal::getInstance).thenReturn(mockDal);
       contextStatic.when(OBContext::getOBContext).thenReturn(mockCurrentContext);
       when(mockDal.get(TaskType.class, taskTypeId)).thenReturn(mockTaskType);
 
@@ -618,29 +692,24 @@ public class TaskUtilTest {
    * Tests the creation of a task with automatic operator assignment.
    * This should successfully create a task and assign an operator automatically.
    *
-   * @throws Exception if there's an error during task creation
+   * @throws Exception
+   *     if there's an error during task creation
    */
   @Test
   public void testCreateTaskWithAutoAssignment() throws Exception {
-    JSONObject parameters = new JSONObject();
-    parameters.put("ad_client_id", CLIENT_123);
-    parameters.put("ad_org_id", ORG_ID);
-
+    JSONObject parameters = createBasicTaskData();
     OBContext mockEntityContext = mock(OBContext.class);
 
     try (MockedStatic<OBContext> contextStatic = mockStatic(OBContext.class);
-         MockedStatic<OBDal> dalStatic = mockStatic(OBDal.class);
+         MockedStatic<OBDal> ignored = setupOBDalMock();
          MockedStatic<OBProvider> providerStatic = mockStatic(OBProvider.class);
          MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class)) {
 
-      dalStatic.when(OBDal::getInstance).thenReturn(mockDal);
       providerStatic.when(OBProvider::getInstance).thenReturn(mockProvider);
       contextStatic.when(OBContext::getOBContext).thenReturn(mockEntityContext);
       when(mockEntityContext.getUser()).thenReturn(mockUser);
 
-      when(mockProvider.get(Task.class)).thenReturn(mockTask);
-      when(mockDal.get(Client.class, CLIENT_123)).thenReturn(mockClient);
-      when(mockDal.get(Organization.class, ORG_ID)).thenReturn(mockOrganization);
+      setupTaskCreationMocks();
 
       taskUtilStatic.when(() -> TaskUtil.createTask(any(TaskType.class), any(Status.class),
               anyBoolean(), any(JSONObject.class), any(OBContext.class)))
@@ -650,42 +719,35 @@ public class TaskUtilTest {
       Task result = TaskUtil.createTask(mockTaskType, mockStatus, true, parameters, mockEntityContext);
 
       assertEquals(mockTask, result);
-      verify(mockTask).setTaskType(mockTaskType);
-      verify(mockTask).setStatus(mockStatus);
-      verify(mockTask).setClient(mockClient);
-      verify(mockTask).setOrganization(mockOrganization);
+      verifyTaskCreation();
       verify(mockDal).save(mockTask);
       verify(mockDal).flush();
       taskUtilStatic.verify(() -> TaskUtil.setTaskUser(mockTask));
     }
   }
+
   /**
    * Tests the creation of a task without automatic operator assignment.
    * This should successfully create a task without assigning an operator.
    *
-   * @throws Exception if there's an error during task creation
+   * @throws Exception
+   *     if there's an error during task creation
    */
   @Test
   public void testCreateTaskWithoutAutoAssignment() throws Exception {
-    JSONObject parameters = new JSONObject();
-    parameters.put("ad_client_id", CLIENT_123);
-    parameters.put("ad_org_id", ORG_ID);
-
+    JSONObject parameters = createBasicTaskData();
     OBContext mockEntityContext = mock(OBContext.class);
 
     try (MockedStatic<OBContext> contextStatic = mockStatic(OBContext.class);
-         MockedStatic<OBDal> dalStatic = mockStatic(OBDal.class);
+         MockedStatic<OBDal> ignored = setupOBDalMock();
          MockedStatic<OBProvider> providerStatic = mockStatic(OBProvider.class);
          MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class)) {
 
-      dalStatic.when(OBDal::getInstance).thenReturn(mockDal);
       providerStatic.when(OBProvider::getInstance).thenReturn(mockProvider);
       contextStatic.when(OBContext::getOBContext).thenReturn(mockEntityContext);
       when(mockEntityContext.getUser()).thenReturn(mockUser);
 
-      when(mockProvider.get(Task.class)).thenReturn(mockTask);
-      when(mockDal.get(Client.class, CLIENT_123)).thenReturn(mockClient);
-      when(mockDal.get(Organization.class, ORG_ID)).thenReturn(mockOrganization);
+      setupTaskCreationMocks();
 
       taskUtilStatic.when(() -> TaskUtil.createTask(any(TaskType.class), any(Status.class),
               anyBoolean(), any(JSONObject.class), any(OBContext.class)))
@@ -694,17 +756,16 @@ public class TaskUtilTest {
       Task result = TaskUtil.createTask(mockTaskType, mockStatus, false, parameters, mockEntityContext);
 
       assertEquals(mockTask, result);
-      verify(mockTask).setTaskType(mockTaskType);
-      verify(mockTask).setStatus(mockStatus);
+      verifyTaskCreation();
       verify(mockDal).save(mockTask);
       verify(mockDal).flush();
       taskUtilStatic.verify(() -> TaskUtil.setTaskUser(any(Task.class)), never());
     }
   }
+
   /**
    * Tests the execution of state events with multiple events.
    * This should return a list of initial topics from the jobs associated with the events.
-   *
    */
   @Test
   public void testRunStateEventsWithTopics() {
@@ -724,13 +785,12 @@ public class TaskUtilTest {
     when(mockJob1.getEtapInitialTopic()).thenReturn("topic1");
     when(mockJob2.getEtapInitialTopic()).thenReturn("topic2");
 
-    try (MockedStatic<OBDal> dalStatic = mockStatic(OBDal.class);
+    try (MockedStatic<OBDal> ignored = setupOBDalMock();
          MockedStatic<Restrictions> restrictionsStatic = mockStatic(Restrictions.class)) {
 
-      dalStatic.when(OBDal::getInstance).thenReturn(mockDal);
       when(mockDal.createCriteria(Events.class)).thenReturn(mockEventsCriteria);
-      when(mockEventsCriteria.addOrderBy(Events.PROPERTY_SEQUENCENO, true)).thenReturn(mockEventsCriteria);
-      when(mockEventsCriteria.list()).thenReturn(eventsList);
+      setupCriteriaWithOrdering(mockEventsCriteria, Events.PROPERTY_SEQUENCENO, true);
+      setupCriteriaListMock(mockEventsCriteria, eventsList);
 
       List<String> result = TaskUtil.runStateEvents(mockState);
 
@@ -744,7 +804,6 @@ public class TaskUtilTest {
   /**
    * Tests the execution of state events when no events have jobs with topics.
    * This should return an empty list.
-   *
    */
   @Test
   public void testRunStateEventsEmptyTopics() {
@@ -753,57 +812,14 @@ public class TaskUtilTest {
 
     when(mockEvent.getJob()).thenReturn(null);
 
-    try (MockedStatic<OBDal> dalStatic = mockStatic(OBDal.class)) {
-      dalStatic.when(OBDal::getInstance).thenReturn(mockDal);
+    try (MockedStatic<OBDal> ignored = setupOBDalMock()) {
       when(mockDal.createCriteria(Events.class)).thenReturn(mockEventsCriteria);
-      when(mockEventsCriteria.addOrderBy(Events.PROPERTY_SEQUENCENO, true)).thenReturn(mockEventsCriteria);
-      when(mockEventsCriteria.list()).thenReturn(eventsList);
+      setupCriteriaWithOrdering(mockEventsCriteria, Events.PROPERTY_SEQUENCENO, true);
+      setupCriteriaListMock(mockEventsCriteria, eventsList);
 
       List<String> result = TaskUtil.runStateEvents(mockState);
 
       assertTrue(result.isEmpty());
-    }
-  }
-
-  /**
-   * Tests getting user strategy class when no algorithm is configured.
-   * This should throw an OBException.
-   */
-  @Test
-  public void testGetUserStrategyClassNoAlgorithm() {
-    when(mockTaskType.getUserAlgorithm()).thenReturn(null);
-
-    try (MockedStatic<OBMessageUtils> msgUtils = mockStatic(OBMessageUtils.class)) {
-      msgUtils.when(() -> OBMessageUtils.messageBD("ETAWIM_UserAlgorithmNotFound")).thenReturn("User algorithm not found");
-
-      OBException exception = assertThrows(OBException.class,
-          () -> TaskUtil.getUserStrategyClass(mockTaskType));
-      assertEquals("User algorithm not found", exception.getMessage());
-    }
-  }
-
-  /**
-   * Tests getting user strategy class when class loading fails.
-   * This should throw an OBException.
-   */
-  @Test
-  public void testGetUserStrategyClassLoadingError() throws Exception {
-    String javaImpl = "com.test.NonExistentStrategy";
-
-    UserAlgorithm mockUserAlgorithm = mock(UserAlgorithm.class);
-
-    when(mockTaskType.getUserAlgorithm()).thenReturn(mockUserAlgorithm);
-    when(mockUserAlgorithm.getJavaImplementation()).thenReturn(javaImpl);
-
-    try (MockedStatic<OBClassLoader> classLoaderStatic = mockStatic(OBClassLoader.class)) {
-      OBClassLoader mockClassLoader = mock(OBClassLoader.class);
-
-      classLoaderStatic.when(OBClassLoader::getInstance).thenReturn(mockClassLoader);
-      when(mockClassLoader.loadClass(javaImpl)).thenThrow(new ClassNotFoundException("Class not found"));
-
-      OBException exception = assertThrows(OBException.class,
-          () -> TaskUtil.getUserStrategyClass(mockTaskType));
-      assertTrue(exception.getMessage().contains("Class not found"));
     }
   }
 
@@ -816,19 +832,18 @@ public class TaskUtilTest {
     when(mockProcess.getJavaClassName()).thenReturn(null);
     when(mockProcess.getName()).thenReturn(TEST_PROCESS);
 
-    try (MockedStatic<OBMessageUtils> msgUtils = mockStatic(OBMessageUtils.class)) {
-      msgUtils.when(() -> OBMessageUtils.messageBD("ETASK_ProcessWithoutClassName")).thenReturn("Process %s has no class name");
-
-      OBException exception = assertThrows(OBException.class,
-          () -> TaskUtil.runAction(mockProcess, new JSONObject()));
-      assertTrue(exception.getMessage().contains(TEST_PROCESS));
+    try (MockedStatic<OBMessageUtils> msgUtils = setupMessageUtilsMock("ETASK_ProcessWithoutClassName",
+        "Process %s has no class name")) {
+      assertOBExceptionContains(TEST_PROCESS, () -> TaskUtil.runAction(mockProcess, new JSONObject()));
     }
   }
+
   /**
    * Tests setting a task user successfully.
    * This should retrieve the user strategy and assign a user to the task.
    *
-   * @throws Exception if there's an error during user assignment
+   * @throws Exception
+   *     if there's an error during user assignment
    */
   @Test
   public void testSetTaskUserSuccess() throws Exception {
@@ -842,9 +857,8 @@ public class TaskUtilTest {
     when(mockStrategy.findUserAccordingStrategy(eq(mockTaskType), any(JSONObject.class))).thenReturn(mockAssignedUser);
 
     try (MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class);
-         MockedStatic<OBDal> dalStatic = mockStatic(OBDal.class)) {
+         MockedStatic<OBDal> ignored = setupOBDalMock()) {
 
-      dalStatic.when(OBDal::getInstance).thenReturn(mockDal);
       taskUtilStatic.when(() -> TaskUtil.getUserStrategyClass(mockTaskType)).thenReturn(mockStrategy);
       taskUtilStatic.when(() -> TaskUtil.setTaskUser(mockTask)).thenCallRealMethod();
 
@@ -853,6 +867,59 @@ public class TaskUtilTest {
       verify(mockTask).setAssignedUser(mockAssignedUser);
       verify(mockDal).save(mockTask);
       taskUtilStatic.verify(() -> TaskUtil.getUserStrategyClass(mockTaskType));
+    }
+  }
+
+  /**
+   * Tests getting user strategy class when no algorithm is configured.
+   * This should throw an OBException.
+   */
+  @Test
+  public void testGetUserStrategyClassNoAlgorithm() {
+    when(mockTaskType.getUserAlgorithm()).thenReturn(null);
+
+    try (MockedStatic<OBContext> contextStatic = mockStatic(OBContext.class);
+         MockedStatic<OBMessageUtils> msgUtils = setupMessageUtilsMock("ETAWIM_UserAlgorithmNotFound",
+             "User algorithm not found")) {
+
+      OBContext mockCurrentContext = mock(OBContext.class);
+      contextStatic.when(OBContext::getOBContext).thenReturn(mockCurrentContext);
+      contextStatic.when(() -> OBContext.setOBContext("100", "0", "0", "0")).then(invocation -> null);
+      contextStatic.when(() -> OBContext.setOBContext(mockCurrentContext)).then(invocation -> null);
+
+      assertOBExceptionContains("User algorithm not found", () -> TaskUtil.getUserStrategyClass(mockTaskType));
+    }
+  }
+
+  /**
+   * Tests getting user strategy class when the class cannot be loaded.
+   * This should throw an OBException with a ClassNotFoundException message.
+   *
+   * @throws Exception
+   *     if there's an error during class loading
+   */
+  @Test
+  public void testGetUserStrategyClassLoadingError() throws Exception {
+    String javaImpl = "com.test.NonExistentStrategy";
+
+    UserAlgorithm mockUserAlgorithm = mock(UserAlgorithm.class);
+
+    when(mockTaskType.getUserAlgorithm()).thenReturn(mockUserAlgorithm);
+    when(mockUserAlgorithm.getJavaImplementation()).thenReturn(javaImpl);
+
+    try (MockedStatic<OBContext> contextStatic = mockStatic(OBContext.class);
+         MockedStatic<OBClassLoader> classLoaderStatic = mockStatic(OBClassLoader.class)) {
+
+      OBContext mockCurrentContext = mock(OBContext.class);
+      contextStatic.when(OBContext::getOBContext).thenReturn(mockCurrentContext);
+      contextStatic.when(() -> OBContext.setOBContext("100", "0", "0", "0")).then(invocation -> null);
+      contextStatic.when(() -> OBContext.setOBContext(mockCurrentContext)).then(invocation -> null);
+
+      OBClassLoader mockClassLoader = mock(OBClassLoader.class);
+      classLoaderStatic.when(OBClassLoader::getInstance).thenReturn(mockClassLoader);
+      when(mockClassLoader.loadClass(javaImpl)).thenThrow(new ClassNotFoundException("Class not found"));
+
+      assertOBExceptionContains("Class not found", () -> TaskUtil.getUserStrategyClass(mockTaskType));
     }
   }
 

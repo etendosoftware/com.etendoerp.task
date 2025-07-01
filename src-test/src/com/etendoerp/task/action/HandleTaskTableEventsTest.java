@@ -86,6 +86,51 @@ public class HandleTaskTableEventsTest {
   }
 
   /**
+   * Helper method to execute handleTaskTableEvents with TaskUtil mocked.
+   */
+  private ActionResult executeWithMockedTaskUtil(String tableName, String verb,
+      JSONObject norm, JSONObject after, List<String> topics, JSONObject parameters,
+      List<String> mockTopics) throws Exception {
+
+    try (MockedStatic<TaskUtil> taskUtil = mockStatic(TaskUtil.class)) {
+      if (mockTopics != null) {
+        taskUtil.when(() -> TaskUtil.findStateByStatusId(STATUS_ID, TASK_TYPE_ID))
+            .thenReturn(mockState);
+        taskUtil.when(() -> TaskUtil.runStateEvents(mockState))
+            .thenReturn(mockTopics);
+      }
+
+      return job.handleTaskTableEvents(tableName, verb, norm, after, topics, parameters);
+    }
+  }
+
+  /**
+   * Helper method to verify TaskUtil method calls.
+   */
+  private void verifyTaskUtilCalls(MockedStatic<TaskUtil> taskUtil, int findStateCallCount, int runStateEventsCallCount) {
+    if (findStateCallCount == 0) {
+      taskUtil.verify(() -> TaskUtil.findStateByStatusId(anyString(), anyString()), never());
+    } else {
+      taskUtil.verify(() -> TaskUtil.findStateByStatusId(STATUS_ID, TASK_TYPE_ID), times(findStateCallCount));
+    }
+
+    if (runStateEventsCallCount == 0) {
+      taskUtil.verify(() -> TaskUtil.runStateEvents(mockState), never());
+    } else {
+      taskUtil.verify(() -> TaskUtil.runStateEvents(mockState), times(runStateEventsCallCount));
+    }
+  }
+
+  /**
+   * Helper method to assert basic result properties.
+   */
+  private void assertBasicResult(ActionResult result, int expectedTopicsSize) {
+    assertNotNull(result);
+    assertNotNull(result.getMessage());
+    assertEquals(expectedTopicsSize, topics.size());
+  }
+
+  /**
    * Verifies that handleTaskTableEvents returns null when the table name does not match the task table.
    *
    * @throws Exception
@@ -115,11 +160,8 @@ public class HandleTaskTableEventsTest {
           TaskConstants.TASK_TABLENAME, CREATE_VERB, norm, after, topics, parameters
       );
 
-      assertNotNull(result);
-      assertNotNull(result.getMessage());
-
-      taskUtil.verify(() -> TaskUtil.findStateByStatusId(anyString(), anyString()), never());
-      taskUtil.verify(() -> TaskUtil.runStateEvents(mockState), never());
+      assertBasicResult(result, 0);
+      verifyTaskUtilCalls(taskUtil, 0, 0);
     }
   }
 
@@ -144,14 +186,10 @@ public class HandleTaskTableEventsTest {
           TaskConstants.TASK_TABLENAME, TaskConstants.TABLE_CREATE, norm, after, topics, parameters
       );
 
-      assertNotNull(result);
-      assertNotNull(result.getMessage());
-      assertEquals(2, topics.size());
+      assertBasicResult(result, 2);
       assertEquals(TOPIC1, topics.get(0));
       assertEquals(TOPIC2, topics.get(1));
-
-      taskUtil.verify(() -> TaskUtil.findStateByStatusId(STATUS_ID, TASK_TYPE_ID), times(1));
-      taskUtil.verify(() -> TaskUtil.runStateEvents(mockState), times(1));
+      verifyTaskUtilCalls(taskUtil, 1, 1);
     }
   }
 
@@ -163,16 +201,13 @@ public class HandleTaskTableEventsTest {
    */
   @Test
   void testHandleTaskTableEventsCreateOperationMissingAutoField() throws Exception {
-
     try (MockedStatic<TaskUtil> taskUtil = mockStatic(TaskUtil.class)) {
       ActionResult result = job.handleTaskTableEvents(
           TaskConstants.TASK_TABLENAME, TaskConstants.TABLE_CREATE, norm, after, topics, parameters
       );
 
       assertNotNull(result);
-
-      taskUtil.verify(() -> TaskUtil.findStateByStatusId(anyString(), anyString()), never());
-      taskUtil.verify(() -> TaskUtil.runStateEvents(mockState), never());
+      verifyTaskUtilCalls(taskUtil, 0, 0);
     }
   }
 
@@ -200,14 +235,10 @@ public class HandleTaskTableEventsTest {
           TaskConstants.TASK_TABLENAME, TaskConstants.TABLE_UPDATE, norm, after, topics, parameters
       );
 
-      assertNotNull(result);
-      assertNotNull(result.getMessage());
-      assertEquals(2, topics.size());
+      assertBasicResult(result, 2);
       assertEquals("updateTopic1", topics.get(0));
       assertEquals("updateTopic2", topics.get(1));
-
-      taskUtil.verify(() -> TaskUtil.findStateByStatusId(STATUS_ID, TASK_TYPE_ID), times(1));
-      taskUtil.verify(() -> TaskUtil.runStateEvents(mockState), times(1));
+      verifyTaskUtilCalls(taskUtil, 1, 1);
     }
   }
 
@@ -230,9 +261,7 @@ public class HandleTaskTableEventsTest {
 
       assertNotNull(result);
       assertEquals(0, topics.size());
-
-      taskUtil.verify(() -> TaskUtil.findStateByStatusId(anyString(), anyString()), never());
-      taskUtil.verify(() -> TaskUtil.runStateEvents(mockState), never());
+      verifyTaskUtilCalls(taskUtil, 0, 0);
     }
   }
 
@@ -246,23 +275,11 @@ public class HandleTaskTableEventsTest {
   void testHandleTaskTableEventsUpdateOperationWithNullBefore() throws Exception {
     List<String> stateTopics = List.of("nullBeforeTopic");
 
-    try (MockedStatic<TaskUtil> taskUtil = mockStatic(TaskUtil.class)) {
-      taskUtil.when(() -> TaskUtil.findStateByStatusId(STATUS_ID, TASK_TYPE_ID))
-          .thenReturn(mockState);
-      taskUtil.when(() -> TaskUtil.runStateEvents(mockState))
-          .thenReturn(stateTopics);
+    ActionResult result = executeWithMockedTaskUtil(
+        TaskConstants.TASK_TABLENAME, TaskConstants.TABLE_UPDATE, norm, after, topics, parameters, stateTopics);
 
-      ActionResult result = job.handleTaskTableEvents(
-          TaskConstants.TASK_TABLENAME, TaskConstants.TABLE_UPDATE, norm, after, topics, parameters
-      );
-
-      assertNotNull(result);
-      assertEquals(1, topics.size());
-      assertEquals("nullBeforeTopic", topics.get(0));
-
-      taskUtil.verify(() -> TaskUtil.findStateByStatusId(STATUS_ID, TASK_TYPE_ID), times(1));
-      taskUtil.verify(() -> TaskUtil.runStateEvents(mockState), times(1));
-    }
+    assertBasicResult(result, 1);
+    assertEquals("nullBeforeTopic", topics.get(0));
   }
 
   /**
@@ -278,23 +295,11 @@ public class HandleTaskTableEventsTest {
 
     List<String> stateTopics = List.of("missingStatusTopic");
 
-    try (MockedStatic<TaskUtil> taskUtil = mockStatic(TaskUtil.class)) {
-      taskUtil.when(() -> TaskUtil.findStateByStatusId(STATUS_ID, TASK_TYPE_ID))
-          .thenReturn(mockState);
-      taskUtil.when(() -> TaskUtil.runStateEvents(mockState))
-          .thenReturn(stateTopics);
+    ActionResult result = executeWithMockedTaskUtil(
+        TaskConstants.TASK_TABLENAME, TaskConstants.TABLE_UPDATE, norm, after, topics, parameters, stateTopics);
 
-      ActionResult result = job.handleTaskTableEvents(
-          TaskConstants.TASK_TABLENAME, TaskConstants.TABLE_UPDATE, norm, after, topics, parameters
-      );
-
-      assertNotNull(result);
-      assertEquals(1, topics.size());
-      assertEquals("missingStatusTopic", topics.get(0));
-
-      taskUtil.verify(() -> TaskUtil.findStateByStatusId(STATUS_ID, TASK_TYPE_ID), times(1));
-      taskUtil.verify(() -> TaskUtil.runStateEvents(mockState), times(1));
-    }
+    assertBasicResult(result, 1);
+    assertEquals("missingStatusTopic", topics.get(0));
   }
 
   /**
@@ -305,17 +310,11 @@ public class HandleTaskTableEventsTest {
    */
   @Test
   void testHandleTaskTableEventsOtherOperation() throws Exception {
-    try (MockedStatic<TaskUtil> taskUtil = mockStatic(TaskUtil.class)) {
-      ActionResult result = job.handleTaskTableEvents(
-          TaskConstants.TASK_TABLENAME, DELETE_VERB, norm, after, topics, parameters
-      );
+    ActionResult result = executeWithMockedTaskUtil(
+        TaskConstants.TASK_TABLENAME, DELETE_VERB, norm, after, topics, parameters, null);
 
-      assertNotNull(result);
-      assertEquals(0, topics.size());
-
-      taskUtil.verify(() -> TaskUtil.findStateByStatusId(anyString(), anyString()), never());
-      taskUtil.verify(() -> TaskUtil.runStateEvents(mockState), never());
-    }
+    assertNotNull(result);
+    assertEquals(0, topics.size());
   }
 
   /**
@@ -391,9 +390,7 @@ public class HandleTaskTableEventsTest {
 
       assertNotNull(result1);
       assertNotNull(result2);
-
-      taskUtil.verify(() -> TaskUtil.findStateByStatusId(STATUS_ID, TASK_TYPE_ID), times(2));
-      taskUtil.verify(() -> TaskUtil.runStateEvents(mockState), times(2));
+      verifyTaskUtilCalls(taskUtil, 2, 2);
     }
   }
 }
