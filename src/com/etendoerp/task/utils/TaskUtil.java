@@ -432,7 +432,7 @@ public final class TaskUtil {
     OBContext currentContext = OBContext.getOBContext();
     try {
       OBContext.setOBContext("100", "0", "0", "0");
-
+      taskType = OBDal.getInstance().get(TaskType.class, taskType.getId());
       if (taskType.getUserAlgorithm() == null) {
         throw new OBException(OBMessageUtils.messageBD("ETAWIM_UserAlgorithmNotFound"));
       }
