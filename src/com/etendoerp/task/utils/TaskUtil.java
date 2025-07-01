@@ -16,6 +16,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
+import org.hibernate.Hibernate;
 import org.hibernate.criterion.MatchMode;
 import org.hibernate.criterion.Restrictions;
 import org.openbravo.base.exception.OBException;
@@ -431,6 +432,7 @@ public final class TaskUtil {
   public static UserAvailabilityStrategy getUserStrategyClass(TaskType taskType) throws OBException {
     OBContext currentContext = OBContext.getOBContext();
     try {
+      Hibernate.initialize(taskType.getUserAlgorithm());
       OBContext.setOBContext("100", "0", "0", "0");
 
       if (taskType.getUserAlgorithm() == null) {
