@@ -158,9 +158,7 @@ public class RoundRobinStrategyTest {
       taskUtilStatic.when(TaskUtil::getActiveUsers).thenReturn(Collections.emptyList());
       msgUtilStatic.when(() -> OBMessageUtils.messageBD("ETASK_NoUsersFound")).thenReturn("No users found");
 
-      assertThrows(OBException.class, () -> {
-        strategy.findUserAccordingStrategy(mockTaskType, mockParameters);
-      });
+      assertThrows(OBException.class, () -> strategy.findUserAccordingStrategy(mockTaskType, mockParameters));
     }
   }
 

@@ -14,7 +14,10 @@
  ************************************************************************/
 package com.etendoerp.task.utils;
 
+import static com.etendoerp.task.TaskTestsConstants.CLIENT_123;
 import static com.etendoerp.task.TaskTestsConstants.ORG_ID;
+import static com.etendoerp.task.TaskTestsConstants.TASK_TYPE_123;
+import static com.etendoerp.task.TaskTestsConstants.TEST_PROCESS;
 import static com.etendoerp.task.TaskTestsConstants.TEST_TABLE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -359,7 +362,7 @@ public class TaskUtilTest {
   @Test
   public void testCreateTask() throws Exception {
     JSONObject data = new JSONObject();
-    data.put(TaskConstants.AD_CLIENT_ATTR, "client123");
+    data.put(TaskConstants.AD_CLIENT_ATTR, CLIENT_123);
     data.put(TaskConstants.AD_ORG_ATTR, ORG_ID);
     JSONObject rawEvent = new JSONObject().put("event", "test");
 
@@ -370,7 +373,7 @@ public class TaskUtilTest {
       providerStatic.when(OBProvider::getInstance).thenReturn(mockProvider);
 
       when(mockProvider.get(Task.class)).thenReturn(mockTask);
-      when(mockDal.get(Client.class, "client123")).thenReturn(mockClient);
+      when(mockDal.get(Client.class, CLIENT_123)).thenReturn(mockClient);
       when(mockDal.get(Organization.class, ORG_ID)).thenReturn(mockOrganization);
       when(mockDal.get(User.class, TaskConstants.ADMIN_USER)).thenReturn(mockUser);
 
@@ -520,7 +523,7 @@ public class TaskUtilTest {
   @Test
   public void testFindStateByStatusId() {
     String statusId = "status123";
-    String taskTypeId = "tasktype123";
+    String taskTypeId = TASK_TYPE_123;
 
     try (MockedStatic<OBDal> dalStatic = mockStatic(OBDal.class)) {
       dalStatic.when(OBDal::getInstance).thenReturn(mockDal);
@@ -542,14 +545,14 @@ public class TaskUtilTest {
   @Test
   public void testRunActionBlankClassName() {
     when(mockProcess.getJavaClassName()).thenReturn("");
-    when(mockProcess.getName()).thenReturn("TestProcess");
+    when(mockProcess.getName()).thenReturn(TEST_PROCESS);
 
     try (MockedStatic<OBMessageUtils> msgUtils = mockStatic(OBMessageUtils.class)) {
       msgUtils.when(() -> OBMessageUtils.messageBD("ETASK_ProcessWithoutClassName")).thenReturn("Process %s has no class name");
 
       OBException exception = assertThrows(OBException.class,
           () -> TaskUtil.runAction(mockProcess, new JSONObject()));
-      assertTrue(exception.getMessage().contains("TestProcess"));
+      assertTrue(exception.getMessage().contains(TEST_PROCESS));
     }
   }
   /**
@@ -560,7 +563,7 @@ public class TaskUtilTest {
    */
   @Test
   public void testUpdateRoundRobinIndexNormal() throws Exception {
-    String taskTypeId = "tasktype123";
+    String taskTypeId = TASK_TYPE_123;
     int idx = 2;
     int size = 5;
 
@@ -590,7 +593,7 @@ public class TaskUtilTest {
    */
   @Test
   public void testUpdateRoundRobinIndexOversize() {
-    String taskTypeId = "tasktype123";
+    String taskTypeId = TASK_TYPE_123;
     int idx = 5;
     int size = 3;
 
@@ -620,7 +623,7 @@ public class TaskUtilTest {
   @Test
   public void testCreateTaskWithAutoAssignment() throws Exception {
     JSONObject parameters = new JSONObject();
-    parameters.put("ad_client_id", "client123");
+    parameters.put("ad_client_id", CLIENT_123);
     parameters.put("ad_org_id", ORG_ID);
 
     OBContext mockEntityContext = mock(OBContext.class);
@@ -636,7 +639,7 @@ public class TaskUtilTest {
       when(mockEntityContext.getUser()).thenReturn(mockUser);
 
       when(mockProvider.get(Task.class)).thenReturn(mockTask);
-      when(mockDal.get(Client.class, "client123")).thenReturn(mockClient);
+      when(mockDal.get(Client.class, CLIENT_123)).thenReturn(mockClient);
       when(mockDal.get(Organization.class, ORG_ID)).thenReturn(mockOrganization);
 
       taskUtilStatic.when(() -> TaskUtil.createTask(any(TaskType.class), any(Status.class),
@@ -665,7 +668,7 @@ public class TaskUtilTest {
   @Test
   public void testCreateTaskWithoutAutoAssignment() throws Exception {
     JSONObject parameters = new JSONObject();
-    parameters.put("ad_client_id", "client123");
+    parameters.put("ad_client_id", CLIENT_123);
     parameters.put("ad_org_id", ORG_ID);
 
     OBContext mockEntityContext = mock(OBContext.class);
@@ -681,7 +684,7 @@ public class TaskUtilTest {
       when(mockEntityContext.getUser()).thenReturn(mockUser);
 
       when(mockProvider.get(Task.class)).thenReturn(mockTask);
-      when(mockDal.get(Client.class, "client123")).thenReturn(mockClient);
+      when(mockDal.get(Client.class, CLIENT_123)).thenReturn(mockClient);
       when(mockDal.get(Organization.class, ORG_ID)).thenReturn(mockOrganization);
 
       taskUtilStatic.when(() -> TaskUtil.createTask(any(TaskType.class), any(Status.class),
@@ -811,14 +814,14 @@ public class TaskUtilTest {
   @Test
   public void testRunActionNullClassName() {
     when(mockProcess.getJavaClassName()).thenReturn(null);
-    when(mockProcess.getName()).thenReturn("TestProcess");
+    when(mockProcess.getName()).thenReturn(TEST_PROCESS);
 
     try (MockedStatic<OBMessageUtils> msgUtils = mockStatic(OBMessageUtils.class)) {
       msgUtils.when(() -> OBMessageUtils.messageBD("ETASK_ProcessWithoutClassName")).thenReturn("Process %s has no class name");
 
       OBException exception = assertThrows(OBException.class,
           () -> TaskUtil.runAction(mockProcess, new JSONObject()));
-      assertTrue(exception.getMessage().contains("TestProcess"));
+      assertTrue(exception.getMessage().contains(TEST_PROCESS));
     }
   }
   /**

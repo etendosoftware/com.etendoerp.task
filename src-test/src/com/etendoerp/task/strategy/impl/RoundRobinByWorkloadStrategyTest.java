@@ -16,6 +16,7 @@ package com.etendoerp.task.strategy.impl;
 
 import static com.etendoerp.task.TaskTestsConstants.NO_TASK_TYPE_ERROR;
 import static com.etendoerp.task.TaskTestsConstants.NO_USERS_ERROR;
+import static com.etendoerp.task.TaskTestsConstants.TASK_TYPE_ID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -187,16 +188,16 @@ public class RoundRobinByWorkloadStrategyTest {
   private User executeStrategyWithMockedUtils(List<User> users, List<Task> tasks, long initialIndex,
       int expectedNextIndex, int totalUsers) {
     when(mockTaskType.getRoundRobinIndex()).thenReturn(initialIndex);
-    when(mockTaskType.getId()).thenReturn("task-type-id-test");
+    when(mockTaskType.getId()).thenReturn(TASK_TYPE_ID);
 
     try (MockedStatic<TaskUtil> taskUtils = mockStatic(TaskUtil.class)) {
       setupTaskUtilMocks(taskUtils, users, tasks);
-      taskUtils.when(() -> TaskUtil.updateRoundRobinIndex("task-type-id-test", expectedNextIndex, totalUsers))
+      taskUtils.when(() -> TaskUtil.updateRoundRobinIndex(TASK_TYPE_ID, expectedNextIndex, totalUsers))
           .thenAnswer(inv -> null);
 
       User result = strategy.findUserAccordingStrategy(mockTaskType, mockParameters);
 
-      taskUtils.verify(() -> TaskUtil.updateRoundRobinIndex("task-type-id-test", expectedNextIndex, totalUsers));
+      taskUtils.verify(() -> TaskUtil.updateRoundRobinIndex(TASK_TYPE_ID, expectedNextIndex, totalUsers));
       return result;
     }
   }

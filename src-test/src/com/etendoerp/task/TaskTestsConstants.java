@@ -24,11 +24,6 @@ public class TaskTestsConstants {
   public static final String TOPIC2 = "topic2";
 
   public static final String TASK_ID = "task123";
-  public static final String NO_TASK_FOUND = "No task found";
-  public static final String USER_ASSIGNED = "User assigned to task";
-
-  public static final String SUCCESS_MESSAGE = "User assigned to task";
-  public static final String NO_TASK_ERROR = "No task found";
 
   public static final String STATE_ID = "state456";
   public static final String OPERATION_DELETE = "d";
@@ -40,6 +35,10 @@ public class TaskTestsConstants {
   public static final String OUT_JSON = "outJson";
   public static final String TEST_TABLE = "test_table";
   public static final String ORG_ID = "org123";
+
+  public static final String CLIENT_123 = "client123";
+  public static final String TASK_TYPE_123 = "tasktype123";
+  public static final String TEST_PROCESS = "TestProcess";
 
 
 }
