@@ -53,8 +53,8 @@
         <default/>
         <onCreateDefault/>
       </column>
-      <column name="AD_MODULE_ID" primaryKey="false" required="true" type="VARCHAR" size="32" autoIncrement="false">
-        <default><![CDATA[0]]></default>
+      <column name="AD_MODULE_ID" primaryKey="false" required="false" type="VARCHAR" size="32" autoIncrement="false">
+        <default/>
         <onCreateDefault/>
       </column>
       <foreign-key foreignTable="AD_CLIENT" name="ETASK_TABLE_AD_CLIENT_FK">
