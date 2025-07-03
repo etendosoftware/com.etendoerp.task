@@ -302,7 +302,7 @@ public final class TaskUtil {
    */
   public static Status getStatus(String identifier) {
     OBCriteria<Status> statusOBCriteria = OBDal.getInstance().createCriteria(Status.class);
-    statusOBCriteria.add(Restrictions.eq(Status.PROPERTY_IDENTIFIER, identifier));
+    statusOBCriteria.add(Restrictions.eq(Status.PROPERTY_SEARCHKEY, identifier));
     statusOBCriteria.setMaxResults(1);
     return (Status) statusOBCriteria.uniqueResult();
   }

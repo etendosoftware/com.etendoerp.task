@@ -45,7 +45,7 @@
         <default><![CDATA[0]]></default>
         <onCreateDefault/>
       </column>
-      <column name="IDENTIFIER" primaryKey="false" required="true" type="VARCHAR" size="40" autoIncrement="false">
+      <column name="VALUE" primaryKey="false" required="true" type="VARCHAR" size="40" autoIncrement="false">
         <default/>
         <onCreateDefault/>
       </column>
@@ -62,7 +62,7 @@
         <index-column name="AD_MODULE_ID"/>
       </index>
       <unique name="ETASK_STATUS_IDENTIFIER_UNIQUE">
-        <unique-column name="IDENTIFIER"/>
+        <unique-column name="VALUE"/>
       </unique>
       <check name="ETASK_STATUS_ISACTIVE_CHK"><![CDATA[ISACTIVE IN ('Y', 'N')]]></check>
     </table>
