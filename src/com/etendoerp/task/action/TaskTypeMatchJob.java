@@ -1,7 +1,6 @@
 package com.etendoerp.task.action;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
@@ -229,9 +228,9 @@ public class TaskTypeMatchJob extends Action {
    * @return The role ID as a string.
    */
   public String getRole(JSONObject taskData, String userId) {
-    if (taskData.has(ASSIGNED_ROLE) && taskData.optString(ASSIGNED_ROLE, null) != null
-        && !StringUtils.equals(taskData.optString(ASSIGNED_ROLE, null), "null")) {
-      return taskData.optString(ASSIGNED_ROLE);
+    String assignedRole = taskData.optString(ASSIGNED_ROLE, null);
+    if (StringUtils.isNotBlank(assignedRole) && !StringUtils.equals(assignedRole, "null")) {
+      return assignedRole;
     }
     User usr = OBDal.getReadOnlyInstance().get(User.class, userId);
     if (usr.getDefaultRole() != null) {
