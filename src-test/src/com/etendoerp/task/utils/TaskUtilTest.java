@@ -45,7 +45,6 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openbravo.base.exception.OBException;
 import org.openbravo.base.provider.OBProvider;
-import org.openbravo.base.util.OBClassLoader;
 import org.openbravo.dal.core.OBContext;
 import org.openbravo.dal.service.OBCriteria;
 import org.openbravo.dal.service.OBDal;
@@ -61,7 +60,6 @@ import com.etendoerp.task.data.Status;
 import com.etendoerp.task.data.Table;
 import com.etendoerp.task.data.Task;
 import com.etendoerp.task.data.TaskType;
-import com.etendoerp.task.data.UserAlgorithm;
 import com.etendoerp.task.strategy.UserAvailabilityStrategy;
 import com.smf.jobs.model.Job;
 
