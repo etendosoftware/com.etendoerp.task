@@ -360,7 +360,7 @@ public class TaskUtilTest {
       Status result = TaskUtil.getStatus(identifier);
 
       assertEquals(mockStatus, result);
-      restrictionsStatic.verify(() -> Restrictions.eq(Status.PROPERTY_IDENTIFIER, identifier));
+      restrictionsStatic.verify(() -> Restrictions.eq(Status.PROPERTY_SEARCHKEY, identifier));
     }
   }
 
