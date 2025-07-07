@@ -11,4 +11,4 @@ under other licensing terms.
 
 | Java Package                     | Version | License                                                                                                            | URL                                                                                    |
 |----------------------------------|---------|--------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
-| org.apache.commons:commons-jexl3 | 3.3     | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) or [Apache_license-2.0.txt](./Apache_license-2.0.txt) | [Package URL](https://mvnrepository.com/artifact/org.apache.commons/commons-jexl3/3.3) |
+| org.apache.commons:commons-jexl3 | 3.3     | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) or [Apache_license-2.0.txt](Apache_license-2.0.txt) | [Package URL](https://mvnrepository.com/artifact/org.apache.commons/commons-jexl3/3.3) |

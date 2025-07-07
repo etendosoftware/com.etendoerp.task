@@ -45,7 +45,7 @@
         <default><![CDATA[0]]></default>
         <onCreateDefault/>
       </column>
-      <column name="VALUE" primaryKey="false" required="true" type="VARCHAR" size="40" autoIncrement="false">
+      <column name="VALUE" primaryKey="false" required="false" type="VARCHAR" size="40" autoIncrement="false">
         <default/>
         <onCreateDefault/>
       </column>
