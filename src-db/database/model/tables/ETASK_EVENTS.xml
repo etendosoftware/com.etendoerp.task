@@ -70,9 +70,6 @@
       <index name="ETASK_EVENTS_JOB_IDX" unique="false">
         <index-column name="JOBS_JOB_ID"/>
       </index>
-      <index name="ETASK_EVENTS_STATE_IDX" unique="false">
-        <index-column name="ETASK_STATE_ID"/>
-      </index>
       <unique name="ETASK_EVENTS_UNIQUE_SEQUENCE">
         <unique-column name="ETASK_STATE_ID"/>
         <unique-column name="SEQUENCE_NO"/>
