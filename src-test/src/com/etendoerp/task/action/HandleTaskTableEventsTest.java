@@ -83,6 +83,10 @@ public class HandleTaskTableEventsTest {
     parameters.put("test", "value");
     after.put(TaskConstants.STATUS, STATUS_ID);
     after.put(TaskConstants.TASK_TYPE_ID_PROPERTY, TASK_TYPE_ID);
+    after.put(TaskConstants.AD_CLIENT_ID, "0");
+    after.put(TaskConstants.AD_ORG_ID, "0");
+    after.put(TaskConstants.ASSIGNED_ROLE,"0");
+    after.put(TaskConstants.ASSIGNED_ROLE, "100");
   }
 
   /**

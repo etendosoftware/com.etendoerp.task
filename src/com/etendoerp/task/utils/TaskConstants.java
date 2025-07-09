@@ -13,6 +13,8 @@ package com.etendoerp.task.utils;
  */
 public class TaskConstants {
 
+ 
+
   /**
    * Private constructor to prevent instantiation of this utility class.
    *
@@ -44,6 +46,10 @@ public class TaskConstants {
   public static final String TOPIC = "topic";
   public static final String CREATED_AUTOMATICALLY = "created_automatically";
   public static final String TASK = "task";
+  public static final String ASSIGNED_ROLE = "assigned_role";
+  public static final String ASSIGNED_USER = "assigned_user";
+  public static final String AD_CLIENT_ID = "ad_client_id";
+  public static final String AD_ORG_ID = "ad_org_id";
 
   /* Task constants */
   public static final String TASK_TABLENAME = "etask_task";

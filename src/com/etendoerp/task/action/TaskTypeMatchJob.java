@@ -48,8 +48,6 @@ import com.smf.jobs.Result;
 public class TaskTypeMatchJob extends Action {
 
   private static final Logger log = LogManager.getLogger(TaskTypeMatchJob.class);
-  public static final String ASSIGNED_ROLE = "assigned_role";
-  public static final String ASSIGNED_USER = "assigned_user";
 
   /**
    * Executes the task type matching logic for the given JSON parameters and whether the job is stopped.
@@ -201,12 +199,15 @@ public class TaskTypeMatchJob extends Action {
     }
 
     var contextJson = new JSONObject();
-    JSONObject afterBlock = parameters.getJSONObject("after");
+    JSONObject afterBlock = after;
+    if (afterBlock == null) {
+      afterBlock = parameters.has("after") ? parameters.getJSONObject("after") : parameters;
+    }
     String userId = getUser(afterBlock);
     contextJson.put("user", userId);
-    contextJson.put("client", afterBlock.getString("ad_client_id"));
+    contextJson.put("client", afterBlock.getString(TaskConstants.AD_CLIENT_ID));
     contextJson.put("role", getRole(afterBlock, userId));
-    contextJson.put("organization", afterBlock.getString("ad_org_id"));
+    contextJson.put("organization", afterBlock.getString(TaskConstants.AD_ORG_ID));
     parameters.put("context", contextJson);
     result.setMessage(outJson(topics, parameters, null).toString());
     return result;
@@ -228,7 +229,7 @@ public class TaskTypeMatchJob extends Action {
    * @return The role ID as a string.
    */
   public String getRole(JSONObject taskData, String userId) {
-    String assignedRole = taskData.optString(ASSIGNED_ROLE, null);
+    String assignedRole = taskData.optString(TaskConstants.ASSIGNED_ROLE, null);
     if (StringUtils.isNotBlank(assignedRole) && !StringUtils.equals(assignedRole, "null")) {
       return assignedRole;
     }
@@ -255,9 +256,9 @@ public class TaskTypeMatchJob extends Action {
       // Default user ID if not specified
       return "100";
     }
-    if (taskData.has(ASSIGNED_USER) && taskData.optString(ASSIGNED_USER, null) != null && !StringUtils.equals(
-        taskData.optString(ASSIGNED_USER, null), "null")) {
-      return taskData.optString(ASSIGNED_USER);
+    if (taskData.has(TaskConstants.ASSIGNED_USER) && taskData.optString(TaskConstants.ASSIGNED_USER, null) != null && !StringUtils.equals(
+        taskData.optString(TaskConstants.ASSIGNED_USER, null), "null")) {
+      return taskData.optString(TaskConstants.ASSIGNED_USER);
     }
     return taskData.optString("createdby");
   }
