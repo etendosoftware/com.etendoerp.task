@@ -66,7 +66,7 @@
       <foreign-key foreignTable="ETASK_TASK_TYPE" name="ETASK_TABLE_TASK_TYPE_FK" onDelete="cascade">
         <reference local="ETASK_TASK_TYPE_ID" foreign="ETASK_TASK_TYPE_ID"/>
       </foreign-key>
-      <foreign-key foreignTable="AD_MODULE" name="ETASK_TASK_TYPE_MODULE_FK">
+      <foreign-key foreignTable="AD_MODULE" name="ETASK_TABLE_MODULE_FK">
         <reference local="AD_MODULE_ID" foreign="AD_MODULE_ID"/>
       </foreign-key>
       <index name="ETASK_STATE_ACTION_IDX" unique="false">
