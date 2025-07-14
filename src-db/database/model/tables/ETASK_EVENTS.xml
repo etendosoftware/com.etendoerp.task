@@ -74,6 +74,12 @@
         <unique-column name="ETASK_STATE_ID"/>
         <unique-column name="SEQUENCE_NO"/>
       </unique>
+      <index name="ETASK_EVENTS_ACTION_IDX" unique="false">
+        <index-column name="ACTION"/>
+      </index>
+      <index name="ETASK_EVENTS_JOBLINE_IDX" unique="false">
+        <index-column name="JOBS_JOBLINE_ID"/>
+      </index>
       <check name="ETASK_EVENTS_ISACTIVE_CHK"><![CDATA[ISACTIVE IN ('Y', 'N')]]></check>
     </table>
   </database>
