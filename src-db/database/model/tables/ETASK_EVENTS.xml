@@ -41,38 +41,39 @@
         <default/>
         <onCreateDefault/>
       </column>
-      <column name="ACTION" primaryKey="false" required="true" type="VARCHAR" size="32" autoIncrement="false">
+      <column name="JOBS_JOB_ID" primaryKey="false" required="true" type="VARCHAR" size="32" autoIncrement="false">
         <default/>
         <onCreateDefault/>
       </column>
-      <column name="JOBS_JOBLINE_ID" primaryKey="false" required="false" type="VARCHAR" size="32" autoIncrement="false">
+      <column name="AD_MODULE_ID" primaryKey="false" required="false" type="VARCHAR" size="32" autoIncrement="false">
         <default/>
         <onCreateDefault/>
       </column>
-      <foreign-key foreignTable="OBUIAPP_PROCESS" name="ETASK_EVENTS_ACTION_FK">
-        <reference local="ACTION" foreign="OBUIAPP_PROCESS_ID"/>
-      </foreign-key>
       <foreign-key foreignTable="AD_CLIENT" name="ETASK_EVENTS_AD_CLIENT_FK">
         <reference local="AD_CLIENT_ID" foreign="AD_CLIENT_ID"/>
       </foreign-key>
       <foreign-key foreignTable="AD_ORG" name="ETASK_EVENTS_AD_ORG_FK">
         <reference local="AD_ORG_ID" foreign="AD_ORG_ID"/>
       </foreign-key>
-      <foreign-key foreignTable="JOBS_JOBLINE" name="ETASK_EVENTS_JOBLINE_FK">
-        <reference local="JOBS_JOBLINE_ID" foreign="JOBS_JOBLINE_ID"/>
+      <foreign-key foreignTable="JOBS_JOB" name="ETASK_EVENTS_JOB_FK">
+        <reference local="JOBS_JOB_ID" foreign="JOBS_JOB_ID"/>
       </foreign-key>
       <foreign-key foreignTable="ETASK_STATE" name="ETASK_EVENTS_STATE_FK" onDelete="cascade">
         <reference local="ETASK_STATE_ID" foreign="ETASK_STATE_ID"/>
       </foreign-key>
+      <foreign-key foreignTable="AD_MODULE" name="ETASK_EVENTS_MODULE_FK">
+        <reference local="AD_MODULE_ID" foreign="AD_MODULE_ID"/>
+      </foreign-key>
       <index name="ETASK_EVENT_STATE_IDX" unique="false">
         <index-column name="ETASK_STATE_ID"/>
       </index>
-      <index name="ETASK_EVENTS_ACTION_IDX" unique="false">
-        <index-column name="ACTION"/>
+      <index name="ETASK_EVENTS_JOB_IDX" unique="false">
+        <index-column name="JOBS_JOB_ID"/>
       </index>
-      <index name="ETASK_EVENTS_JOBLINE_IDX" unique="false">
-        <index-column name="JOBS_JOBLINE_ID"/>
-      </index>
+      <unique name="ETASK_EVENTS_UNIQUE_SEQUENCE">
+        <unique-column name="ETASK_STATE_ID"/>
+        <unique-column name="SEQUENCE_NO"/>
+      </unique>
       <check name="ETASK_EVENTS_ISACTIVE_CHK"><![CDATA[ISACTIVE IN ('Y', 'N')]]></check>
     </table>
   </database>

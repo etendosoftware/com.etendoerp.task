@@ -45,6 +45,21 @@
         <default/>
         <onCreateDefault/>
       </column>
+      <column name="CREATED_AUTOMATICALLY" primaryKey="false" required="true" type="CHAR" size="1" autoIncrement="false">
+        <default><![CDATA[N]]></default>
+        <onCreateDefault/>
+      </column>
+      <column name="EVENT_JSONINFO" primaryKey="false" required="false" type="CLOB" size="4000" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+      <column name="ASSIGNED_ROLE" primaryKey="false" required="false" type="VARCHAR" size="32" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+      <foreign-key foreignTable="AD_ROLE" name="ETASK_TASK_ASSGND_ROLE">
+        <reference local="ASSIGNED_ROLE" foreign="AD_ROLE_ID"/>
+      </foreign-key>
       <foreign-key foreignTable="AD_USER" name="ETASK_TASK_ASSGND_USER">
         <reference local="ASSIGNED_USER" foreign="AD_USER_ID"/>
       </foreign-key>
@@ -66,6 +81,7 @@
       <index name="ETASK_TASK_TYPE_IDX" unique="false">
         <index-column name="ETASK_TASK_TYPE_ID"/>
       </index>
+      <check name="ETASK_TASK_CREATED_ATML_CHK"><![CDATA[CREATED_AUTOMATICALLY IN ('Y', 'N')]]></check>
       <check name="ETASK_TASK_ISACTIVE_CHK"><![CDATA[ISACTIVE IN ('Y', 'N')]]></check>
     </table>
   </database>
