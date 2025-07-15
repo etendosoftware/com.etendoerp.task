@@ -55,5 +55,6 @@ dependencies {
     implementation('org.apache.commons:commons-jexl3:3.3')
     implementation('com.etendoerp:etendorx:2.12.0')
     implementation('com.etendoerp:asyncprocess:1.11.0')
-    implementation('com.etendoerp.platform:etendo-core:[25.1.0,25.3.0)')
+
+    implementation('com.etendoerp.platform:etendo-core:[25.2.0,25.3.0)')
 }
