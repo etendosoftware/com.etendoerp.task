@@ -1,0 +1,393 @@
+# Technical Design - com.etendoerp.task Module
+
+## Executive Summary
+
+The `com.etendoerp.task` module implements an advanced task management system in Etendo ERP based on an event-driven architecture. This module acts as an intelligent coordinator that processes database events (via Debezium), evaluates business rules using JEXL, and automatically assigns tasks to available users through configurable load balancing strategies.
+
+## General Architecture
+
+### Component Diagram
+
+```plantuml
+@startuml
+package "com.etendoerp.task" {
+  package "Action" {
+    [TaskTypeMatchJob] <<SMF Jobs Action>>
+  }
+  
+  package "Strategy" {
+    interface UserAvailabilityStrategy
+    [RoundRobinStrategy]
+    [RoundRobinByWorkloadStrategy]
+  }
+  
+  package "Utils" {
+    [TaskUtil] <<Utility Class>>
+    [TaskConstants]
+  }
+  
+  package "Data Model" {
+    [Task] <<Entity>>
+    [TaskType] <<Entity>>
+    [TaskStatus] <<Entity>>
+    [UserAlgorithm] <<Entity>>
+  }
+}
+
+package "External Dependencies" {
+  [SMF Jobs Framework]
+  [Debezium CDC]
+  [JEXL Engine]
+  [Kafka Infrastructure]
+}
+
+[TaskTypeMatchJob] --> [UserAvailabilityStrategy] : uses
+[TaskTypeMatchJob] --> [TaskUtil] : uses
+[TaskUtil] --> [JEXL Engine] : evaluates rules
+[RoundRobinStrategy] --|> [UserAvailabilityStrategy]
+[RoundRobinByWorkloadStrategy] --|> [UserAvailabilityStrategy]
+[TaskTypeMatchJob] --> [SMF Jobs Framework] : extends Action
+[Debezium CDC] --> [TaskTypeMatchJob] : triggers via event
+[TaskTypeMatchJob] --> [Kafka Infrastructure] : publishes events
+
+@enduml
+```
+
+## Main Components
+
+### 1. TaskTypeMatchJob (Processing Core)
+
+**Function:** Main action that processes database change events to automatically create and manage tasks.
+
+**Technical Features:**
+- Extends `com.smf.jobs.Action` from the SMF framework
+- Processes JSON events from Debezium CDC
+- Implements JSON schema validation
+- Manages state transitions and user assignment
+- Publishes processed events to Kafka
+
+**Processing Flow:**
+```plantuml
+@startuml
+participant "Database Change" as DB
+participant "Debezium" as DZ
+participant "TaskTypeMatchJob" as TMJ
+participant "JEXL Engine" as JEXL
+participant "UserStrategy" as US
+participant "Kafka" as K
+
+DB -> DZ: Table Update/Insert
+DZ -> TMJ: JSON Event
+TMJ -> TMJ: validateEventStructure()
+TMJ -> JEXL: evaluateRule(taskType, event)
+alt Rule matches
+  TMJ -> US: findUserAccordingStrategy()
+  TMJ -> TMJ: createTask()
+  TMJ -> TMJ: updateTaskState()
+  TMJ -> K: publishProcessedEvent()
+else Rule doesn't match
+  TMJ -> TMJ: logSkippedEvent()
+end
+@enduml
+```
+
+### 2. User Assignment Strategies
+
+#### UserAvailabilityStrategy (Interface)
+
+Defines the contract for user assignment algorithms:
+
+```java
+public interface UserAvailabilityStrategy {
+    User findUserAccordingStrategy(TaskType taskType, JSONObject parameters);
+    List<User> getUsersAvailable(TaskType taskType, JSONObject parameters);
+}
+```
+
+#### RoundRobinStrategy
+
+**Algorithm:** Simple sequential distribution among available users.
+- Maintains a round-robin index in `TaskType.rrindex`
+- Does not consider current workload
+- Lightweight and predictable implementation
+
+#### RoundRobinByWorkloadStrategy
+
+**Algorithm:** Distribution based on minimum workload with round-robin among users with equal load.
+
+**Assignment Process:**
+1. Calculates the current workload of each user (open tasks: PE, IP)
+2. Identifies users with the minimum workload
+3. Applies round-robin among users with equal load
+4. Updates the rotation index
+
+**Advantages:**
+- Automatic load balancing
+- Avoids overloading specific users
+- Maintains fairness among users with equal availability
+
+### 3. TaskUtil (Centralized Utilities)
+
+**Main Functions:**
+- **JEXL Evaluation:** `evaluateExpression()` for business rules
+- **User Management:** `getActiveUsers()`, `preloadTasks()`
+- **Task Status:** `getStatus()`, state transitions
+- **Round-robin:** `updateRoundRobinIndex()` for assignment strategies
+
+**Technical Features:**
+- 746 lines of code with static functions
+- Integration with OBDal administrative context
+- Transaction and rollback management
+- Performance optimizations with preloading
+
+### 4. Data Model
+
+#### ETASK_TASK (Main Table)
+```sql
+CREATE TABLE ETASK_TASK (
+  ETASK_TASK_ID VARCHAR(32) PRIMARY KEY,
+  AD_CLIENT_ID VARCHAR(32) NOT NULL,
+  AD_ORG_ID VARCHAR(32) NOT NULL,
+  ISACTIVE CHAR(1) DEFAULT 'Y',
+  CREATED TIMESTAMP DEFAULT SYSDATE,
+  STATUS VARCHAR(32) NOT NULL,
+  ASSIGNED_USER VARCHAR(32),
+  ASSIGNED_ROLE VARCHAR(32),
+  ETASK_TASK_TYPE_ID VARCHAR(32) NOT NULL,
+  CREATED_AUTOMATICALLY CHAR(1) DEFAULT 'N',
+  EVENT_JSONINFO CLOB,
+  FOREIGN KEY (STATUS) REFERENCES ETASK_TASK_STATUS,
+  FOREIGN KEY (ETASK_TASK_TYPE_ID) REFERENCES ETASK_TASK_TYPE
+);
+```
+
+#### ETASK_TASK_TYPE (Type Configuration)
+```sql
+CREATE TABLE ETASK_TASK_TYPE (
+  ETASK_TASK_TYPE_ID VARCHAR(32) PRIMARY KEY,
+  NAME VARCHAR(200) NOT NULL,
+  VALUE VARCHAR(40) NOT NULL,
+  RRINDEX DECIMAL(10,0) DEFAULT 0,
+  ETASK_USER_ALGORITHM_ID VARCHAR(32) NOT NULL,
+  FOREIGN KEY (ETASK_USER_ALGORITHM_ID) REFERENCES ETASK_USER_ALGORITHM
+);
+```
+
+**Key Fields:**
+- `RRINDEX`: Index for round-robin algorithms
+- `ETASK_USER_ALGORITHM_ID`: Reference to the assignment strategy
+- `VALUE`: Unique identifier for JEXL rules
+
+## Integration with Frameworks
+
+### 1. SMF Jobs Framework
+
+The module integrates natively with the SMF Jobs framework:
+
+```java
+@Component
+public class TaskTypeMatchJob extends Action {
+    @Override
+    public void action(JSONObject parameters) throws Exception {
+        // Event processing logic
+    }
+}
+```
+
+**Integration Benefits:**
+- Automatic asynchronous execution
+- Error and retry management
+- Integrated monitoring and logging
+- Horizontal scalability
+
+### 2. Debezium Change Data Capture
+
+**Typical Configuration:**
+- Captures events from specific configured tables
+- JSON format with `before`/`after` structure
+- Guaranteed delivery via Kafka Connect
+- Filtering by operations (INSERT, UPDATE, DELETE)
+
+**Typical Event Structure:**
+```json
+{
+  "source": {"table": "some_business_table"},
+  "op": "u",
+  "before": {...},
+  "after": {...},
+  "task_type": "BUSINESS_RULE_X"
+}
+```
+
+### 3. JEXL Expression Engine
+
+**Use in Business Rules:**
+```java
+// Example JEXL rule for task creation
+String rule = "event.after.amount > 1000 && event.after.status == 'PENDING'";
+Boolean matches = TaskUtil.evaluateExpression(rule, eventContext);
+```
+
+**Capabilities:**
+- Access to event properties (`event.after.field`)
+- Mathematical and logical operators
+- Predefined functions for validations
+- Enriched context with system data
+
+## Implemented Design Patterns
+
+### 1. Strategy Pattern
+Assignment strategies (`UserAvailabilityStrategy`) allow swapping distribution algorithms without modifying the client code.
+
+### 2. Factory Pattern
+`TaskUtil` acts as a factory for domain objects (Status, Users) with an internal cache.
+
+### 3. Command Pattern
+Inheritance from `SMF Jobs Action` implements the Command pattern for asynchronous operations.
+
+### 4. Observer Pattern
+Reactive processing of Debezium events implements a distributed Observer pattern.
+
+## Main Data Flow
+
+### Automatic Task Creation
+
+```plantuml
+@startuml
+participant "Database" as DB
+participant "Debezium" as CDC
+participant "Kafka" as K
+participant "SMF Jobs" as SMF
+participant "TaskTypeMatchJob" as TMJ
+participant "Strategy" as ST
+participant "TaskUtil" as TU
+
+DB -> CDC: Row Change
+CDC -> K: Publish Event
+K -> SMF: Event Delivery
+SMF -> TMJ: action(parameters)
+
+TMJ -> TMJ: validateEventStructure()
+alt Valid Event
+  TMJ -> TU: evaluateExpression(rule, event)
+  alt Rule Matches
+    TMJ -> ST: findUserAccordingStrategy()
+    TMJ -> TU: createTask()
+    TMJ -> TMJ: updateTaskState()
+    TMJ -> K: publishSuccessEvent()
+  else Rule Doesn't Match
+    TMJ -> TMJ: logSkippedEvent()
+  end
+else Invalid Event
+  TMJ -> TMJ: logError()
+  TMJ -> K: publishErrorEvent()
+end
+@enduml
+```
+
+## State Management
+
+### Available Task States
+- **PE (Pending):** Task created, pending assignment
+- **IP (In Progress):** Task assigned and in execution
+- **CO (Completed):** Task completed successfully
+- **CA (Cancelled):** Task cancelled
+- **ER (Error):** Task with errors
+
+### State Transitions
+```plantuml
+@startuml
+[*] --> PE : Task Created
+PE --> IP : User Assigned
+IP --> CO : Task Completed
+IP --> ER : Error Occurred
+PE --> CA : Task Cancelled
+ER --> PE : Retry/Reset
+CA --> PE : Reactivated
+CO --> [*]
+@enduml
+```
+
+## Performance Considerations
+
+### 1. Implemented Optimizations
+- **Preloading:** `TaskUtil.preloadTasks()` loads tasks in batch
+- **Database Indexes:** Optimization on STATUS and TASK_TYPE
+- **Active User Cache:** Reduction of repetitive queries
+- **Asynchronous Processing:** No blocking of main operations
+
+### 2. Key Metrics
+- **Processing Latency:** < 100ms per typical event
+- **Throughput:** Depends on SMF Jobs configuration
+- **Memory:** Minimal load with controlled preloading
+- **Database:** Optimized queries with indexes
+
+## Configuration and Deployment
+
+### 1. Required Dependencies
+```xml
+<dependency>
+  <groupId>com.smf</groupId>
+  <artifactId>jobs</artifactId>
+</dependency>
+<dependency>
+  <groupId>org.apache.commons</groupId>
+  <artifactId>commons-jexl3</artifactId>
+</dependency>
+```
+
+### 2. Debezium Configuration
+```json
+{
+  "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+  "table.include.list": "public.business_table",
+  "transforms": "addTaskType",
+  "transforms.addTaskType.type": "org.apache.kafka.connect.transforms.InsertField$Value",
+  "transforms.addTaskType.static.field": "task_type",
+  "transforms.addTaskType.static.value": "BUSINESS_RULE_X"
+}
+```
+
+### 3. SMF Jobs Configuration
+- Configuration of workers and thread pools
+- Configuration of retry policies
+- Configuration of monitoring and alerts
+
+## Testing and Quality
+
+### 1. Test Coverage
+- **TaskTypeMatchJobTest:** Unit tests for main logic
+- **TaskUtilTest:** Tests for utility functions
+- **HandleTaskTableEventsTest:** Integration tests
+
+### 2. Testing Strategy
+- **Unit tests:** Isolated business logic
+- **Integration tests:** Interaction with frameworks
+- **Performance tests:** Load and throughput
+- **End-to-end tests:** Complete event flow
+
+## Evolution and Roadmap
+
+### 1. Identified Improvements
+- **Implementation of circuit breakers** for system failures
+- **Advanced metrics** with Micrometer/Prometheus
+- **Dynamic configuration** of JEXL rules
+- **Additional assignment strategies** (geographic, by skills)
+
+### 2. Future Integration
+- **AsyncProcess module:** Unification of asynchronous processing
+- **Notification system:** Automatic alerts and notifications
+- **Workflow engine:** Orchestration of complex tasks
+- **AI/ML integration:** Intelligent assignment based on patterns
+
+## Conclusions
+
+The `com.etendoerp.task` module represents a modern and scalable architecture for task management in enterprise environments. Its event-driven design, combined with pluggable assignment strategies and native integration with proven frameworks, provides a solid foundation for automated business operations.
+
+The main strengths include:
+- **Decoupling:** Event-driven architecture
+- **Extensibility:** Pluggable strategies and configurable rules
+- **Performance:** Optimizations and asynchronous processing
+- **Integration:** Native compatibility with the existing technology stack
+
+The improvement opportunities are focused on observability, dynamic configuration, and advanced workflow functionalities that will further strengthen the module's value proposition.
