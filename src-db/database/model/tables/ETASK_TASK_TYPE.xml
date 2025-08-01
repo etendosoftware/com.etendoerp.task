@@ -49,7 +49,7 @@
         <default/>
         <onCreateDefault/>
       </column>
-      <column name="ETASK_USER_ALGORITHM_ID" primaryKey="false" required="true" type="VARCHAR" size="32" autoIncrement="false">
+      <column name="ETASK_USER_ALGORITHM_ID" primaryKey="false" required="false" type="VARCHAR" size="32" autoIncrement="false">
         <default><![CDATA[0711B9DECC004FC8ACA751E19DF18BFB]]></default>
         <onCreateDefault/>
       </column>
