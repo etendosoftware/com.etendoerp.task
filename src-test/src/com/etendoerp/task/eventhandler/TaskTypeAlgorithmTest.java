@@ -43,6 +43,7 @@ import org.openbravo.base.model.ModelProvider;
 import org.openbravo.base.model.Property;
 import org.openbravo.client.kernel.event.EntityNewEvent;
 import org.openbravo.client.kernel.event.EntityUpdateEvent;
+import org.openbravo.dal.core.TriggerHandler;
 import org.openbravo.erpCommon.utility.OBMessageUtils;
 
 import com.etendoerp.task.data.Table;
@@ -95,7 +96,13 @@ public class TaskTypeAlgorithmTest {
      */
     @Override
     protected boolean isValidEvent(org.openbravo.client.kernel.event.EntityPersistenceEvent event) {
-      return true;
+      // Disable event handlers if data is being imported
+      if (TriggerHandler.getInstance().isDisabled()) {
+        return false;
+      }
+      final Entity targetEntity = event.getTargetInstance().getEntity();
+      return targetEntity == ModelProvider.getInstance().getEntity(TaskType.class) ||
+          targetEntity == ModelProvider.getInstance().getEntity(Table.class);
     }
   }
 
