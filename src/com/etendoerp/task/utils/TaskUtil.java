@@ -4,6 +4,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.commons.jexl3.JexlBuilder;
 import org.apache.commons.jexl3.JexlContext;
@@ -23,6 +24,7 @@ import org.openbravo.base.provider.OBProvider;
 import org.openbravo.base.util.OBClassLoader;
 import org.openbravo.client.application.Process;
 import org.openbravo.dal.core.OBContext;
+import org.openbravo.dal.security.OrganizationStructureProvider;
 import org.openbravo.dal.service.OBCriteria;
 import org.openbravo.dal.service.OBDal;
 import org.openbravo.erpCommon.utility.OBMessageUtils;
@@ -250,15 +252,21 @@ public final class TaskUtil {
    * @see OBContext#setAdminMode(boolean)
    */
   public static List<User> getActiveUsers() {
-    try {
-      OBContext.setAdminMode(true);
-      OBCriteria<User> userOBCriteria = OBDal.getInstance().createCriteria(User.class);
-      userOBCriteria.add(Restrictions.ne(User.PROPERTY_ID, "0"));
-      userOBCriteria.addOrderBy(User.PROPERTY_USERNAME, true);
-      return userOBCriteria.list();
-    } finally {
-      OBContext.restorePreviousMode();
-    }
+    OBContext context = OBContext.getOBContext();
+
+    String currentOrgId = context.getCurrentOrganization().getId();
+    String currentClientId = context.getCurrentClient().getId();
+
+    OrganizationStructureProvider osp = context.getOrganizationStructureProvider(currentClientId);
+    Set<String> orgTree = osp.getNaturalTree(currentOrgId);
+
+    OBCriteria<User> userOBCriteria = OBDal.getInstance().createCriteria(User.class);
+    userOBCriteria.add(Restrictions.ne(User.PROPERTY_ID, "0"));
+    userOBCriteria.add(Restrictions.eq(User.PROPERTY_ACTIVE, true));
+    userOBCriteria.add(Restrictions.in(User.PROPERTY_ORGANIZATION + ".id", orgTree));
+    userOBCriteria.addOrderBy(User.PROPERTY_USERNAME, true);
+
+    return userOBCriteria.list();
   }
 
   /**

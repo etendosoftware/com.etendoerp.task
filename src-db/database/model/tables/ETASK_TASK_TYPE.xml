@@ -37,7 +37,7 @@
         <default/>
         <onCreateDefault/>
       </column>
-      <column name="RRINDEX" primaryKey="false" required="true" type="DECIMAL" size="10,0" autoIncrement="false">
+      <column name="RRINDEX" primaryKey="false" required="false" type="DECIMAL" size="10,0" autoIncrement="false">
         <default><![CDATA[0]]></default>
         <onCreateDefault/>
       </column>
