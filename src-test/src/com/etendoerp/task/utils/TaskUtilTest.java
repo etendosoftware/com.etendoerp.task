@@ -34,6 +34,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Set;
 
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
@@ -303,9 +304,24 @@ public class TaskUtilTest {
   @Test
   public void testGetActiveUsers() {
     List<User> expectedUsers = List.of(mockUser);
+    String orgId = "org-id";
+    String clientId = "client-id";
 
-    try (MockedStatic<OBDal> ignored = setupOBDalMock();
-         MockedStatic<OBContext> contextStatic = setupOBContextMock()) {
+    OBContext mockContext = mock(OBContext.class);
+    org.openbravo.dal.security.OrganizationStructureProvider ospMock =
+        mock(org.openbravo.dal.security.OrganizationStructureProvider.class);
+
+    try (MockedStatic<OBDal> ignoredDal = setupOBDalMock();
+         MockedStatic<OBContext> contextStatic = mockStatic(OBContext.class)) {
+
+      contextStatic.when(OBContext::getOBContext).thenReturn(mockContext);
+
+      when(mockContext.getCurrentOrganization()).thenReturn(mockOrganization);
+      when(mockContext.getCurrentClient()).thenReturn(mockClient);
+      when(mockOrganization.getId()).thenReturn(orgId);
+      when(mockClient.getId()).thenReturn(clientId);
+      when(mockContext.getOrganizationStructureProvider(clientId)).thenReturn(ospMock);
+      when(ospMock.getNaturalTree(orgId)).thenReturn(Set.of(orgId));
 
       when(mockDal.createCriteria(User.class)).thenReturn(mockUserCriteria);
       setupCriteriaWithOrdering(mockUserCriteria, User.PROPERTY_USERNAME, true);
@@ -314,8 +330,7 @@ public class TaskUtilTest {
       List<User> result = TaskUtil.getActiveUsers();
 
       assertEquals(expectedUsers, result);
-      contextStatic.verify(() -> OBContext.setAdminMode(true));
-      contextStatic.verify(OBContext::restorePreviousMode);
+      contextStatic.verify(OBContext::getOBContext);
     }
   }
 
