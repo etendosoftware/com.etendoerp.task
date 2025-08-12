@@ -187,11 +187,11 @@ public class RoundRobinByWorkloadStrategyTest {
    */
   private User executeStrategyWithMockedUtils(List<User> users, List<Task> tasks, long initialIndex,
       int expectedNextIndex, int totalUsers) {
-    when(mockTaskType.getRoundRobinIndex()).thenReturn(initialIndex);
     when(mockTaskType.getId()).thenReturn(TASK_TYPE_ID);
 
     try (MockedStatic<TaskUtil> taskUtils = mockStatic(TaskUtil.class)) {
       setupTaskUtilMocks(taskUtils, users, tasks);
+      taskUtils.when(() -> TaskUtil.getRoundRobinIndex(mockTaskType)).thenReturn(initialIndex);
       taskUtils.when(() -> TaskUtil.updateRoundRobinIndex(TASK_TYPE_ID, expectedNextIndex, totalUsers))
           .thenAnswer(inv -> null);
 
