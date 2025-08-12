@@ -39,6 +39,7 @@ import com.etendoerp.task.data.Status;
 import com.etendoerp.task.data.Table;
 import com.etendoerp.task.data.Task;
 import com.etendoerp.task.data.TaskType;
+import com.etendoerp.task.data.TaskTypeInfo;
 import com.etendoerp.task.strategy.UserAvailabilityStrategy;
 import com.smf.jobs.Action;
 import com.smf.jobs.ActionResult;
@@ -340,17 +341,65 @@ public final class TaskUtil {
 
     Long newIndex = (long) idx;
 
-    OBContext currentContext = OBContext.getOBContext();
     try {
-      OBContext.setOBContext("100", "0", "0", "0");
+      OBContext.setAdminMode(false);
 
       TaskType taskType = OBDal.getInstance().get(TaskType.class, taskTypeId);
-      taskType.setRoundRobinIndex(newIndex);
-      OBDal.getInstance().save(taskType);
+      var taskTypeInfo = getTaskTypeInfo(taskType);
+      if (taskTypeInfo == null) {
+        taskTypeInfo = OBProvider.getInstance().get(TaskTypeInfo.class);
+        taskTypeInfo.setTaskType(taskType);
+        taskTypeInfo.setNewOBObject(true);
+        taskTypeInfo.setClient(OBContext.getOBContext().getCurrentClient());
+        taskTypeInfo.setOrganization(OBDal.getInstance().get(Organization.class, "0"));
+      }
+      taskTypeInfo.setRoundRobinIndex(newIndex);
+      OBDal.getInstance().save(taskTypeInfo);
       OBDal.getInstance().flush();
     } finally {
-      OBContext.setOBContext(currentContext);
+      OBContext.restorePreviousMode();
     }
+  }
+
+  /**
+   * Retrieves the round-robin index for a given task type.
+   * <p>
+   * This method queries the database for a {@link TaskTypeInfo} entity associated with the provided
+   * {@link TaskType}. If no matching entity is found, it logs a debug message and returns a default
+   * value of 0. Otherwise, it returns the round-robin index stored in the {@link TaskTypeInfo}.
+   * </p>
+   *
+   * @param taskType
+   *     the {@link TaskType} for which to retrieve the round-robin index
+   * @return the round-robin index as a {@link Long}, or 0 if no matching {@link TaskTypeInfo} is found
+   */
+  public static Long getRoundRobinIndex(TaskType taskType) {
+    TaskTypeInfo taskTypeInfo = getTaskTypeInfo(taskType);
+    if (taskTypeInfo == null) {
+      log.debug("No TaskTypeInfo found for task type: {}", taskType.getId());
+      return 0L; // Default to 0 if no info is found
+    }
+    return taskTypeInfo.getRoundRobinIndex();
+  }
+
+  /**
+   * Retrieves the {@link TaskTypeInfo} associated with the given {@link TaskType}.
+   * <p>
+   * This method creates a read-only criteria query to search for a {@link TaskTypeInfo}
+   * entity that matches the provided {@link TaskType}. If a match is found, it is returned;
+   * otherwise, the method returns null.
+   * </p>
+   *
+   * @param taskType
+   *     the {@link TaskType} for which to retrieve the associated {@link TaskTypeInfo}
+   * @return the matching {@link TaskTypeInfo}, or null if no match is found
+   */
+  public static TaskTypeInfo getTaskTypeInfo(TaskType taskType) {
+    OBCriteria<TaskTypeInfo> crit = OBDal.getInstance().createCriteria(TaskTypeInfo.class);
+    crit.add(Restrictions.eq(TaskTypeInfo.PROPERTY_TASKTYPE, taskType));
+    crit.add(Restrictions.eq(TaskTypeInfo.PROPERTY_CLIENT, OBContext.getOBContext().getCurrentClient()));
+    crit.setMaxResults(1);
+    return (TaskTypeInfo) crit.uniqueResult();
   }
 
   /**
@@ -507,8 +556,7 @@ public final class TaskUtil {
         verb = TaskConstants.TABLE_DELETE;
         break;
       default:
-        throw new OBException(String.format(
-            OBMessageUtils.messageBD("ETASK_InvalidDatabaseOperation"), operation));
+        throw new OBException(String.format(OBMessageUtils.messageBD("ETASK_InvalidDatabaseOperation"), operation));
     }
 
     out.put(TaskConstants.VERB, verb);
@@ -658,8 +706,8 @@ public final class TaskUtil {
    * @return The matching table, or null if no match is found.
    */
   public static org.openbravo.model.ad.datamodel.Table getADTable(String tableName) {
-    OBCriteria<org.openbravo.model.ad.datamodel.Table> tableOBCriteria =
-        OBDal.getInstance().createCriteria(org.openbravo.model.ad.datamodel.Table.class);
+    OBCriteria<org.openbravo.model.ad.datamodel.Table> tableOBCriteria = OBDal.getInstance().createCriteria(
+        org.openbravo.model.ad.datamodel.Table.class);
     tableOBCriteria.add(
         Restrictions.ilike(org.openbravo.model.ad.datamodel.Table.PROPERTY_DBTABLENAME, tableName, MatchMode.EXACT));
     tableOBCriteria.setMaxResults(1);
@@ -680,8 +728,8 @@ public final class TaskUtil {
    */
   public static String getEventValue(String verb) {
     Reference ref = OBDal.getInstance().get(Reference.class, TaskConstants.TABLE_EVENTS_REF);
-    OBCriteria<org.openbravo.model.ad.domain.List> listOBCriteria =
-        OBDal.getInstance().createCriteria(org.openbravo.model.ad.domain.List.class);
+    OBCriteria<org.openbravo.model.ad.domain.List> listOBCriteria = OBDal.getInstance().createCriteria(
+        org.openbravo.model.ad.domain.List.class);
     listOBCriteria.add(Restrictions.eq(org.openbravo.model.ad.domain.List.PROPERTY_REFERENCE, ref));
     listOBCriteria.add(Restrictions.ilike(org.openbravo.model.ad.domain.List.PROPERTY_NAME, verb));
     listOBCriteria.setMaxResults(1);
@@ -717,8 +765,7 @@ public final class TaskUtil {
    */
   public static State findStateByStatusId(String statusId, String taskTypeId) {
     OBCriteria<State> stateOBCriteria = OBDal.getInstance().createCriteria(State.class);
-    stateOBCriteria.add(Restrictions.eq(State.PROPERTY_TASKTYPE,
-        OBDal.getInstance().get(TaskType.class, taskTypeId)));
+    stateOBCriteria.add(Restrictions.eq(State.PROPERTY_TASKTYPE, OBDal.getInstance().get(TaskType.class, taskTypeId)));
     stateOBCriteria.createAlias(State.PROPERTY_TASKSTATUS, "st");
     stateOBCriteria.add(Restrictions.eq("st.id", statusId));
     stateOBCriteria.setMaxResults(1);
