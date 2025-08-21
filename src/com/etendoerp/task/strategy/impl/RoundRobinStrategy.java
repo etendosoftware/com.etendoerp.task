@@ -51,7 +51,8 @@ public class RoundRobinStrategy implements UserAvailabilityStrategy {
    */
   @Override
   public User findUserAccordingStrategy(TaskType taskType, JSONObject parameters) {
-    int currentIndex = (taskType.getRoundRobinIndex() != null) ? taskType.getRoundRobinIndex().intValue() : 0;
+    Long roundRobinIndex = TaskUtil.getRoundRobinIndex(taskType);
+    int currentIndex = (roundRobinIndex != null) ? roundRobinIndex.intValue() : 0;
 
     List<User> availableUsers = getUsersAvailable(taskType, parameters);
     if (availableUsers.isEmpty()) {
@@ -64,6 +65,7 @@ public class RoundRobinStrategy implements UserAvailabilityStrategy {
 
     return selectedUser;
   }
+
 
   /**
    * Retrieves the list of users available for the given task type.

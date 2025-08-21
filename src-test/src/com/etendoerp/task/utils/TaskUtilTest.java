@@ -46,6 +46,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openbravo.base.exception.OBException;
 import org.openbravo.base.provider.OBProvider;
+import org.openbravo.client.application.Process;
 import org.openbravo.dal.core.OBContext;
 import org.openbravo.dal.service.OBCriteria;
 import org.openbravo.dal.service.OBDal;
@@ -61,10 +62,9 @@ import com.etendoerp.task.data.Status;
 import com.etendoerp.task.data.Table;
 import com.etendoerp.task.data.Task;
 import com.etendoerp.task.data.TaskType;
+import com.etendoerp.task.data.TaskTypeInfo;
 import com.etendoerp.task.strategy.UserAvailabilityStrategy;
 import com.smf.jobs.model.Job;
-
-import org.openbravo.client.application.Process;
 
 /**
  * Unit tests for {@link TaskUtil}.
@@ -121,6 +121,9 @@ public class TaskUtilTest {
   private TaskType mockTaskType;
 
   @Mock
+  private TaskTypeInfo mockTaskTypeInfo;
+
+  @Mock
   private org.openbravo.model.ad.datamodel.Table mockADTable;
 
   @Mock
@@ -144,6 +147,9 @@ public class TaskUtilTest {
   @Mock
   private OBCriteria<Events> mockEventsCriteria;
 
+  @Mock
+  private OBCriteria<TaskTypeInfo> mockTaskTypeInfoCriteria;
+
   /**
    * Helper method to setup common OBDal mock behavior.
    */
@@ -153,24 +159,97 @@ public class TaskUtilTest {
     return dalStatic;
   }
 
-  /**
-   * Helper method to setup common OBContext mock behavior.
-   */
-  private MockedStatic<OBContext> setupOBContextMock() {
-    MockedStatic<OBContext> contextStatic = mockStatic(OBContext.class);
-    contextStatic.when(() -> OBContext.setAdminMode(true)).then(invocation -> null);
-    contextStatic.when(OBContext::restorePreviousMode).then(invocation -> null);
-    return contextStatic;
-  }
 
   /**
    * Helper method to setup common OBMessageUtils mock behavior for exceptions.
    */
   private MockedStatic<OBMessageUtils> setupMessageUtilsMock(String messageKey, String messageValue) {
-    MockedStatic<OBMessageUtils> msgUtils = mockStatic(OBMessageUtils.class);
-    msgUtils.when(() -> OBMessageUtils.messageBD(messageKey)).thenReturn(messageValue);
-    msgUtils.when(() -> OBMessageUtils.getI18NMessage(messageKey)).thenReturn(messageValue);
-    return msgUtils;
+    MockedStatic<OBMessageUtils> mockStatic = mockStatic(OBMessageUtils.class);
+    mockStatic.when(() -> OBMessageUtils.messageBD(messageKey)).thenReturn(messageValue);
+    mockStatic.when(() -> OBMessageUtils.getI18NMessage(messageKey)).thenReturn(messageValue);
+    return mockStatic;
+  }
+
+  /**
+   * Helper method to test round-robin index update with expected index value.
+   *
+   * @param initialIndex
+   *     the input index value
+   * @param size
+   *     the size of the round-robin list
+   * @param expectedFinalIndex
+   *     the expected final index value after normalization
+   */
+  private void testRoundRobinIndexUpdate(int initialIndex, int size, long expectedFinalIndex) {
+    String taskTypeId = TASK_TYPE_123;
+
+    try (MockedStatic<OBDal> dalStatic = setupOBDalMock();
+         MockedStatic<OBContext> contextStatic = mockStatic(OBContext.class);
+         MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class)) {
+
+      OBContext mockCurrentContext = mock(OBContext.class);
+      contextStatic.when(OBContext::getOBContext).thenReturn(mockCurrentContext);
+      when(mockDal.get(TaskType.class, taskTypeId)).thenReturn(mockTaskType);
+
+      // Mock getTaskTypeInfo to return existing TaskTypeInfo
+      taskUtilStatic.when(() -> TaskUtil.getTaskTypeInfo(mockTaskType)).thenReturn(mockTaskTypeInfo);
+
+      // Call the real method for updateRoundRobinIndex
+      taskUtilStatic.when(() -> TaskUtil.updateRoundRobinIndex(taskTypeId, initialIndex, size)).thenCallRealMethod();
+
+      TaskUtil.updateRoundRobinIndex(taskTypeId, initialIndex, size);
+
+      verify(mockTaskTypeInfo).setRoundRobinIndex(expectedFinalIndex);
+      verify(mockDal).save(mockTaskTypeInfo);
+      verify(mockDal).flush();
+    }
+  }
+
+  /**
+   * Helper method to test task creation with configurable auto-assignment.
+   *
+   * @param assignOperatorAutomatically
+   *     whether to assign operator automatically
+   * @throws Exception
+   *     if there's an error during task creation
+   */
+  private void testTaskCreationWithAssignment(boolean assignOperatorAutomatically) throws Exception {
+    JSONObject parameters = createBasicTaskData();
+    OBContext mockEntityContext = mock(OBContext.class);
+
+    try (MockedStatic<OBContext> contextStatic = mockStatic(OBContext.class);
+         MockedStatic<OBDal> ignored = setupOBDalMock();
+         MockedStatic<OBProvider> providerStatic = mockStatic(OBProvider.class);
+         MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class)) {
+
+      providerStatic.when(OBProvider::getInstance).thenReturn(mockProvider);
+      contextStatic.when(OBContext::getOBContext).thenReturn(mockEntityContext);
+      when(mockEntityContext.getUser()).thenReturn(mockUser);
+
+      setupTaskCreationMocks();
+
+      taskUtilStatic.when(() -> TaskUtil.createTask(any(TaskType.class), any(Status.class),
+              anyBoolean(), any(JSONObject.class), any(OBContext.class)))
+          .thenCallRealMethod();
+
+      if (assignOperatorAutomatically) {
+        taskUtilStatic.when(() -> TaskUtil.setTaskUser(any(Task.class))).then(invocation -> null);
+      }
+
+      Task result = TaskUtil.createTask(mockTaskType, mockStatus, assignOperatorAutomatically, parameters,
+          mockEntityContext);
+
+      assertEquals(mockTask, result);
+      verifyTaskCreation();
+      verify(mockDal).save(mockTask);
+      verify(mockDal).flush();
+
+      if (assignOperatorAutomatically) {
+        taskUtilStatic.verify(() -> TaskUtil.setTaskUser(mockTask));
+      } else {
+        taskUtilStatic.verify(() -> TaskUtil.setTaskUser(any(Task.class)), never());
+      }
+    }
   }
 
   /**
@@ -234,6 +313,15 @@ public class TaskUtilTest {
   private void assertOBExceptionContains(String expectedContent, Runnable action) {
     OBException exception = assertThrows(OBException.class, action::run);
     assertTrue(exception.getMessage().contains(expectedContent));
+  }
+
+  /**
+   * Custom test exception for wrapping JSON exceptions in tests.
+   */
+  private static class TestException extends RuntimeException {
+    public TestException(Throwable cause) {
+      super(cause);
+    }
   }
 
   /**
@@ -431,7 +519,7 @@ public class TaskUtilTest {
         try {
           TaskUtil.validateAndNormalizeParameters(parameters);
         } catch (JSONException e) {
-          throw new RuntimeException(e);
+          throw new TestException(e);
         }
       });
     }
@@ -460,7 +548,7 @@ public class TaskUtilTest {
         try {
           TaskUtil.validateAndNormalizeParameters(parameters);
         } catch (JSONException e) {
-          throw new RuntimeException(e);
+          throw new TestException(e);
         }
       });
     }
@@ -655,25 +743,7 @@ public class TaskUtilTest {
    */
   @Test
   public void testUpdateRoundRobinIndexNormal() {
-    String taskTypeId = TASK_TYPE_123;
-    int idx = 2;
-    int size = 5;
-
-    try (MockedStatic<OBDal> ignored = setupOBDalMock();
-         MockedStatic<OBContext> contextStatic = mockStatic(OBContext.class)) {
-
-      OBContext mockCurrentContext = mock(OBContext.class);
-      contextStatic.when(OBContext::getOBContext).thenReturn(mockCurrentContext);
-      when(mockDal.get(TaskType.class, taskTypeId)).thenReturn(mockTaskType);
-
-      TaskUtil.updateRoundRobinIndex(taskTypeId, idx, size);
-
-      verify(mockTaskType).setRoundRobinIndex(2L);
-      verify(mockDal).save(mockTaskType);
-      verify(mockDal).flush();
-      contextStatic.verify(() -> OBContext.setOBContext("100", "0", "0", "0"));
-      contextStatic.verify(() -> OBContext.setOBContext(mockCurrentContext));
-    }
+    testRoundRobinIndexUpdate(2, 5, 2L);
   }
 
   /**
@@ -682,23 +752,7 @@ public class TaskUtilTest {
    */
   @Test
   public void testUpdateRoundRobinIndexOversize() {
-    String taskTypeId = TASK_TYPE_123;
-    int idx = 5;
-    int size = 3;
-
-    try (MockedStatic<OBDal> ignored = setupOBDalMock();
-         MockedStatic<OBContext> contextStatic = mockStatic(OBContext.class)) {
-
-      OBContext mockCurrentContext = mock(OBContext.class);
-      contextStatic.when(OBContext::getOBContext).thenReturn(mockCurrentContext);
-      when(mockDal.get(TaskType.class, taskTypeId)).thenReturn(mockTaskType);
-
-      TaskUtil.updateRoundRobinIndex(taskTypeId, idx, size);
-
-      verify(mockTaskType).setRoundRobinIndex(0L);
-      verify(mockDal).save(mockTaskType);
-      verify(mockDal).flush();
-    }
+    testRoundRobinIndexUpdate(5, 3, 0L);
   }
 
   /**
@@ -710,33 +764,7 @@ public class TaskUtilTest {
    */
   @Test
   public void testCreateTaskWithAutoAssignment() throws Exception {
-    JSONObject parameters = createBasicTaskData();
-    OBContext mockEntityContext = mock(OBContext.class);
-
-    try (MockedStatic<OBContext> contextStatic = mockStatic(OBContext.class);
-         MockedStatic<OBDal> ignored = setupOBDalMock();
-         MockedStatic<OBProvider> providerStatic = mockStatic(OBProvider.class);
-         MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class)) {
-
-      providerStatic.when(OBProvider::getInstance).thenReturn(mockProvider);
-      contextStatic.when(OBContext::getOBContext).thenReturn(mockEntityContext);
-      when(mockEntityContext.getUser()).thenReturn(mockUser);
-
-      setupTaskCreationMocks();
-
-      taskUtilStatic.when(() -> TaskUtil.createTask(any(TaskType.class), any(Status.class),
-              anyBoolean(), any(JSONObject.class), any(OBContext.class)))
-          .thenCallRealMethod();
-      taskUtilStatic.when(() -> TaskUtil.setTaskUser(any(Task.class))).then(invocation -> null);
-
-      Task result = TaskUtil.createTask(mockTaskType, mockStatus, true, parameters, mockEntityContext);
-
-      assertEquals(mockTask, result);
-      verifyTaskCreation();
-      verify(mockDal).save(mockTask);
-      verify(mockDal).flush();
-      taskUtilStatic.verify(() -> TaskUtil.setTaskUser(mockTask));
-    }
+    testTaskCreationWithAssignment(true);
   }
 
   /**
@@ -748,32 +776,7 @@ public class TaskUtilTest {
    */
   @Test
   public void testCreateTaskWithoutAutoAssignment() throws Exception {
-    JSONObject parameters = createBasicTaskData();
-    OBContext mockEntityContext = mock(OBContext.class);
-
-    try (MockedStatic<OBContext> contextStatic = mockStatic(OBContext.class);
-         MockedStatic<OBDal> ignored = setupOBDalMock();
-         MockedStatic<OBProvider> providerStatic = mockStatic(OBProvider.class);
-         MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class)) {
-
-      providerStatic.when(OBProvider::getInstance).thenReturn(mockProvider);
-      contextStatic.when(OBContext::getOBContext).thenReturn(mockEntityContext);
-      when(mockEntityContext.getUser()).thenReturn(mockUser);
-
-      setupTaskCreationMocks();
-
-      taskUtilStatic.when(() -> TaskUtil.createTask(any(TaskType.class), any(Status.class),
-              anyBoolean(), any(JSONObject.class), any(OBContext.class)))
-          .thenCallRealMethod();
-
-      Task result = TaskUtil.createTask(mockTaskType, mockStatus, false, parameters, mockEntityContext);
-
-      assertEquals(mockTask, result);
-      verifyTaskCreation();
-      verify(mockDal).save(mockTask);
-      verify(mockDal).flush();
-      taskUtilStatic.verify(() -> TaskUtil.setTaskUser(any(Task.class)), never());
-    }
+    testTaskCreationWithAssignment(false);
   }
 
   /**
