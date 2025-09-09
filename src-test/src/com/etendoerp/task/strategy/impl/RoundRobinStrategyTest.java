@@ -76,7 +76,8 @@ public class RoundRobinStrategyTest {
 
     try (MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class)) {
       taskUtilStatic.when(TaskUtil::getActiveUsers).thenReturn(availableUsers);
-      taskUtilStatic.when(() -> TaskUtil.getRoundRobinIndex(mockTaskType)).thenReturn(null);
+      // The strategy calls the two-argument overload with the list size, mock that overload to return 0
+      taskUtilStatic.when(() -> TaskUtil.getRoundRobinIndex(mockTaskType, 3)).thenReturn(0);
       taskUtilStatic.when(() -> TaskUtil.updateRoundRobinIndex(TASK_TYPE_ID_1, 1, 3)).then(invocation -> null);
 
       User result = strategy.findUserAccordingStrategy(mockTaskType, mockParameters);
@@ -97,7 +98,7 @@ public class RoundRobinStrategyTest {
 
     try (MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class)) {
       taskUtilStatic.when(TaskUtil::getActiveUsers).thenReturn(availableUsers);
-      taskUtilStatic.when(() -> TaskUtil.getRoundRobinIndex(mockTaskType)).thenReturn(2L);
+      taskUtilStatic.when(() -> TaskUtil.getRoundRobinIndex(mockTaskType, 3)).thenReturn(2);
       taskUtilStatic.when(() -> TaskUtil.updateRoundRobinIndex(TASK_TYPE_ID_2, 3, 3)).then(invocation -> null);
 
       User result = strategy.findUserAccordingStrategy(mockTaskType, mockParameters);
@@ -118,7 +119,7 @@ public class RoundRobinStrategyTest {
 
     try (MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class)) {
       taskUtilStatic.when(TaskUtil::getActiveUsers).thenReturn(availableUsers);
-      taskUtilStatic.when(() -> TaskUtil.getRoundRobinIndex(mockTaskType)).thenReturn(1L);
+      taskUtilStatic.when(() -> TaskUtil.getRoundRobinIndex(mockTaskType, 2)).thenReturn(1);
       taskUtilStatic.when(() -> TaskUtil.updateRoundRobinIndex(TASK_TYPE_ID_3, 2, 2)).then(invocation -> null);
 
       User result = strategy.findUserAccordingStrategy(mockTaskType, mockParameters);
@@ -139,7 +140,7 @@ public class RoundRobinStrategyTest {
 
     try (MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class)) {
       taskUtilStatic.when(TaskUtil::getActiveUsers).thenReturn(availableUsers);
-      taskUtilStatic.when(() -> TaskUtil.getRoundRobinIndex(mockTaskType)).thenReturn(0L);
+      taskUtilStatic.when(() -> TaskUtil.getRoundRobinIndex(mockTaskType, 2)).thenReturn(0);
       taskUtilStatic.when(() -> TaskUtil.updateRoundRobinIndex(TASK_TYPE_ID_4, 1, 2)).then(invocation -> null);
 
       User result = strategy.findUserAccordingStrategy(mockTaskType, mockParameters);
@@ -160,7 +161,8 @@ public class RoundRobinStrategyTest {
          MockedStatic<OBMessageUtils> msgUtilStatic = mockStatic(OBMessageUtils.class)) {
 
       taskUtilStatic.when(TaskUtil::getActiveUsers).thenReturn(Collections.emptyList());
-      taskUtilStatic.when(() -> TaskUtil.getRoundRobinIndex(mockTaskType)).thenReturn(0L);
+      // Index is not relevant here since no users are available; provide a safe two-arg mock
+      taskUtilStatic.when(() -> TaskUtil.getRoundRobinIndex(mockTaskType, 1)).thenReturn(0);
       msgUtilStatic.when(() -> OBMessageUtils.messageBD("ETASK_NoUsersFound")).thenReturn("No users found");
 
       assertThrows(OBException.class, () -> strategy.findUserAccordingStrategy(mockTaskType, mockParameters));
@@ -213,7 +215,7 @@ public class RoundRobinStrategyTest {
 
     try (MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class)) {
       taskUtilStatic.when(TaskUtil::getActiveUsers).thenReturn(availableUsers);
-      taskUtilStatic.when(() -> TaskUtil.getRoundRobinIndex(mockTaskType)).thenReturn(1L);
+      taskUtilStatic.when(() -> TaskUtil.getRoundRobinIndex(mockTaskType, 3)).thenReturn(1);
       taskUtilStatic.when(() -> TaskUtil.updateRoundRobinIndex(TASK_TYPE_ID_5, 2, 3)).then(invocation -> null);
 
       User result = strategy.findUserAccordingStrategy(mockTaskType, mockParameters);
