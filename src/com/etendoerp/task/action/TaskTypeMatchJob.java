@@ -204,58 +204,7 @@ public class TaskTypeMatchJob extends Action {
   }
 
 
-  /**
-   * Retrieves the role ID for a user based on the provided parameters.
-   *
-   * <p>If the `parameters` object contains the `ad_role_id` field, its value is returned.
-   * Otherwise, the method fetches the user from the database using the provided `userId`
-   * and retrieves the default role ID associated with that user. If the user does not have
-   * a default role, the first role from the user's role list is returned.
-   *
-   * @param taskData
-   *     A JSON object containing input parameters, which may include `ad_role_id`.
-   * @param userId
-   *     The ID of the user whose role is to be retrieved.
-   * @return The role ID as a string.
-   */
-  public String getRole(JSONObject taskData, String userId) {
-    String assignedRole = taskData.optString(TaskConstants.ASSIGNED_ROLE, null);
-    if (StringUtils.isNotBlank(assignedRole) && !StringUtils.equals(assignedRole, "null")) {
-      return assignedRole;
-    }
-    User usr = OBDal.getReadOnlyInstance().get(User.class, userId);
-    if (usr.getDefaultRole() != null) {
-      return usr.getDefaultRole().getId();
-    }
-    List<UserRoles> adUserRolesList = usr.getADUserRolesList();
-    if (adUserRolesList.isEmpty()) {
-      throw new OBException(OBMessageUtils.messageBD("ETASK_UserHasNoRole"));
-    }
-    return adUserRolesList.get(0).getRole().getId();
-  }
-
-  /**
-   * Retrieves the user ID from the provided parameters.
-   *
-   * <p>The method first checks if the `after` object in the `parameters` contains an `assigned_user` field.
-   * If found, its value is returned. If not, the method checks for the `createdby` field in the same object.
-   * If neither field is present, a default user ID of "100" is returned.
-   *
-   * @param taskData
-   *     A JSON object containing input parameters, which may include user-related fields.
-   * @return The user ID as a string.
-   */
-  public String getUser(JSONObject taskData) {
-    if (taskData == null) {
-      // Default user ID if not specified
-      return "100";
-    }
-    if (taskData.has(TaskConstants.ASSIGNED_USER) && taskData.optString(TaskConstants.ASSIGNED_USER, null) != null && !StringUtils.equals(
-        taskData.optString(TaskConstants.ASSIGNED_USER, null), "null")) {
-      return taskData.optString(TaskConstants.ASSIGNED_USER);
-    }
-    return taskData.optString("createdby");
-  }
+  
 
   /**
    * Converts the given input into a JSON object with three fields:
