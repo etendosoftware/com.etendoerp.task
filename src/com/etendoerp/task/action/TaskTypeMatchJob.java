@@ -13,6 +13,7 @@ import org.openbravo.dal.core.OBContext;
 import org.openbravo.dal.service.OBDal;
 import org.openbravo.erpCommon.utility.OBMessageUtils;
 import org.openbravo.model.ad.access.User;
+import org.openbravo.model.ad.access.UserRoles;
 
 import com.etendoerp.task.data.State;
 import com.etendoerp.task.data.Table;
@@ -237,7 +238,11 @@ public class TaskTypeMatchJob extends Action {
     if (usr.getDefaultRole() != null) {
       return usr.getDefaultRole().getId();
     }
-    return usr.getADUserRolesList().get(0).getRole().getId();
+    List<UserRoles> adUserRolesList = usr.getADUserRolesList();
+    if (adUserRolesList.isEmpty()) {
+      throw new OBException(OBMessageUtils.messageBD("ETASK_UserHasNoRole"));
+    }
+    return adUserRolesList.get(0).getRole().getId();
   }
 
   /**
