@@ -75,11 +75,11 @@ public class RoundRobinByWorkloadStrategy implements UserAvailabilityStrategy {
     if (minimalLoadOps.isEmpty()) {
       throw new OBException(OBMessageUtils.messageBD("ETASK_NoAvailableUsersByLoad"));
     }
-    var roundRobinIndex = TaskUtil.getRoundRobinIndex(taskType);
-    int currentIndex = (roundRobinIndex != null) ? roundRobinIndex.intValue() : 0;
+    int minimalLoadsSize = minimalLoadOps.size();
+    int currentIndex = TaskUtil.getRoundRobinIndex(taskType, minimalLoadsSize);
     User selectedUser = minimalLoadOps.get(currentIndex);
 
-    TaskUtil.updateRoundRobinIndex(taskType.getId(), currentIndex + 1, minimalLoadOps.size());
+    TaskUtil.updateRoundRobinIndex(taskType.getId(), currentIndex + 1, minimalLoadsSize);
 
     return selectedUser;
   }

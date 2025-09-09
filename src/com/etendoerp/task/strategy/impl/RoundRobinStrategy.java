@@ -51,17 +51,16 @@ public class RoundRobinStrategy implements UserAvailabilityStrategy {
    */
   @Override
   public User findUserAccordingStrategy(TaskType taskType, JSONObject parameters) {
-    Long roundRobinIndex = TaskUtil.getRoundRobinIndex(taskType);
-    int currentIndex = (roundRobinIndex != null) ? roundRobinIndex.intValue() : 0;
-
     List<User> availableUsers = getUsersAvailable(taskType, parameters);
     if (availableUsers.isEmpty()) {
       throw new OBException(OBMessageUtils.messageBD("ETASK_NoUsersFound"));
     }
+    int availableUsersListSize = availableUsers.size();
+    int currentIndex = TaskUtil.getRoundRobinIndex(taskType, availableUsersListSize);
 
     User selectedUser = availableUsers.get(currentIndex);
 
-    TaskUtil.updateRoundRobinIndex(taskType.getId(), currentIndex + 1, availableUsers.size());
+    TaskUtil.updateRoundRobinIndex(taskType.getId(), currentIndex + 1, availableUsersListSize);
 
     return selectedUser;
   }

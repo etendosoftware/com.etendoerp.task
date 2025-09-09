@@ -265,6 +265,8 @@ public final class TaskUtil {
     userOBCriteria.add(Restrictions.ne(User.PROPERTY_ID, "0"));
     userOBCriteria.add(Restrictions.eq(User.PROPERTY_ACTIVE, true));
     userOBCriteria.add(Restrictions.in(User.PROPERTY_ORGANIZATION + ".id", orgTree));
+    userOBCriteria.add(Restrictions.sqlRestriction( // Ensure user has at least one role
+        " exists (select 1 from ad_user_roles ur where ur.ad_user_id = {alias}.ad_user_id ) "));
     userOBCriteria.addOrderBy(User.PROPERTY_USERNAME, true);
 
     return userOBCriteria.list();
@@ -383,6 +385,36 @@ public final class TaskUtil {
   }
 
   /**
+   * Retrieves the round-robin index for a given task type, ensuring it is within the valid range.
+   *
+   * <p>This method calculates the current round-robin index for the specified {@link TaskType}.
+   * If the index exceeds the maximum size, it resets to 0. This ensures the index remains
+   * within the bounds of the round-robin list.
+   *
+   * @param taskType
+   *     the {@link TaskType} for which to retrieve the round-robin index
+   * @param maxSize
+   *     the maximum size of the round-robin list
+   * @return the current round-robin index, or 0 if the index exceeds the maximum size
+   */
+  public static int getRoundRobinIndex(TaskType taskType, int maxSize) {
+    // Retrieve the current round-robin index for the task type
+    Long roundRobinIndex = getRoundRobinIndex(taskType);
+
+    // Convert the index to an integer, defaulting to 0 if null
+    int currentIndex = ((roundRobinIndex != null) ? roundRobinIndex.intValue() : 0);
+
+    // Reset the index to 0 if it exceeds the maximum size
+    if (currentIndex >= maxSize) {
+      return 0;
+    }
+
+    // Return the valid round-robin index
+    return currentIndex;
+  }
+
+
+  /**
    * Retrieves the {@link TaskTypeInfo} associated with the given {@link TaskType}.
    * <p>
    * This method creates a read-only criteria query to search for a {@link TaskTypeInfo}
@@ -425,8 +457,8 @@ public final class TaskUtil {
    */
   public static Task createTask(TaskType taskType, Status status, boolean assignOperatorAutomatically,
       JSONObject parameters, OBContext entityContex) {
-    OBContext.setAdminMode(true);
     try {
+      OBContext.setAdminMode(true);
       OBContext.setOBContext(entityContex);
       Task task = OBProvider.getInstance().get(Task.class);
 
