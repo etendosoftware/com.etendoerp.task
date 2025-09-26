@@ -57,6 +57,9 @@
         <default/>
         <onCreateDefault/>
       </column>
+      <foreign-key foreignTable="OBUIAPP_PROCESS" name="ETASK_TABLE_ACTION">
+        <reference local="ACTION" foreign="OBUIAPP_PROCESS_ID"/>
+      </foreign-key>
       <foreign-key foreignTable="AD_CLIENT" name="ETASK_TABLE_AD_CLIENT_FK">
         <reference local="AD_CLIENT_ID" foreign="AD_CLIENT_ID"/>
       </foreign-key>
@@ -65,6 +68,9 @@
       </foreign-key>
       <foreign-key foreignTable="AD_MODULE" name="ETASK_TABLE_MODULE_FK">
         <reference local="AD_MODULE_ID" foreign="AD_MODULE_ID"/>
+      </foreign-key>
+      <foreign-key foreignTable="AD_TABLE" name="ETASK_TABLE_TABLE">
+        <reference local="AD_TABLE_ID" foreign="AD_TABLE_ID"/>
       </foreign-key>
       <foreign-key foreignTable="ETASK_TASK_TYPE" name="ETASK_TABLE_TASK_TYPE_FK" onDelete="cascade">
         <reference local="ETASK_TASK_TYPE_ID" foreign="ETASK_TASK_TYPE_ID"/>
