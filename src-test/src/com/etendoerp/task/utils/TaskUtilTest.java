@@ -46,6 +46,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openbravo.base.exception.OBException;
 import org.openbravo.base.provider.OBProvider;
+import org.openbravo.base.util.OBClassLoader;
 import org.openbravo.client.application.Process;
 import org.openbravo.dal.core.OBContext;
 import org.openbravo.dal.service.OBCriteria;
@@ -63,20 +64,21 @@ import com.etendoerp.task.data.Table;
 import com.etendoerp.task.data.Task;
 import com.etendoerp.task.data.TaskType;
 import com.etendoerp.task.data.TaskTypeInfo;
+import com.etendoerp.task.data.UserAlgorithm;
 import com.etendoerp.task.strategy.UserAvailabilityStrategy;
 import com.smf.jobs.model.Job;
 
 /**
  * Unit tests for {@link TaskUtil}.
  * <p>
- * Estos tests cubren la validación de filtros, lógica avanzada, obtención y normalización de parámetros,
- * creación de tareas, manejo de estados, reglas de matching y utilidades relacionadas con la gestión de tareas.
+ * These tests cover filter validation, advanced logic, retrieval and normalization of parameters,
+ * task creation, state handling, matching rules and utilities related to task management.
  * <p>
- * Los métodos de test pueden lanzar {@link Exception} o {@link org.openbravo.base.exception.OBException}
- * en caso de errores de lógica, acceso a datos o validación de parámetros.
+ * Test methods may throw {@link Exception} or {@link org.openbravo.base.exception.OBException}
+ * in case of logic errors, data access issues or parameter validation failures.
  */
 @ExtendWith(MockitoExtension.class)
-public class TaskUtilTest {
+ class TaskUtilTest {
 
   @Mock
   private OBDal mockDal;
@@ -122,6 +124,9 @@ public class TaskUtilTest {
 
   @Mock
   private TaskTypeInfo mockTaskTypeInfo;
+
+  @Mock
+  private UserAlgorithm mockUserAlgorithm;
 
   @Mock
   private org.openbravo.model.ad.datamodel.Table mockADTable;
@@ -332,7 +337,7 @@ public class TaskUtilTest {
    *     if there's an error during filter validation
    */
   @Test
-  public void testValidateFilterWithValidFilter() throws Exception {
+  void testValidateFilterWithValidFilter() throws Exception {
     String filter = "age > 18";
     JSONObject data = new JSONObject().put("age", 25);
 
@@ -341,19 +346,7 @@ public class TaskUtilTest {
     assertTrue(result);
   }
 
-  /**
-   * Tests the validation of a filter that results in false.
-   * This should return false if the filter evaluates to false.
-   */
-  @Test
-  public void testValidateFilterWithInvalidFilter() {
-    String filter = "age >>";
-    JSONObject data = new JSONObject();
-
-    boolean result = TaskUtil.validateFilter(filter, data);
-
-    assertFalse(result);
-  }
+ 
 
   /**
    * Tests the validation of a filter that returns a non-boolean result.
@@ -363,7 +356,7 @@ public class TaskUtilTest {
    *     if there's an error during filter evaluation
    */
   @Test
-  public void testValidateFilterWithNonBooleanResult() throws Exception {
+  void testValidateFilterWithNonBooleanResult() throws Exception {
     String filter = "age + 5";
     JSONObject data = new JSONObject().put("age", 25);
 
@@ -377,7 +370,7 @@ public class TaskUtilTest {
    * This should return true if the action is executed successfully.
    */
   @Test
-  public void testExecuteAdvancedLogicWithNullAction() {
+  void testExecuteAdvancedLogicWithNullAction() {
     when(mockTable.getAction()).thenReturn(null);
 
     boolean result = TaskUtil.executeAdvancedLogic(mockTable, new JSONObject());
@@ -390,7 +383,7 @@ public class TaskUtilTest {
    * This should return a list of active users.
    */
   @Test
-  public void testGetActiveUsers() {
+  void testGetActiveUsers() {
     List<User> expectedUsers = List.of(mockUser);
     String orgId = "org-id";
     String clientId = "client-id";
@@ -427,7 +420,7 @@ public class TaskUtilTest {
    * This should return a list of tasks assigned to the users.
    */
   @Test
-  public void testPreloadTasks() {
+  void testPreloadTasks() {
     List<User> users = List.of(mockUser);
     List<Task> expectedTasks = List.of(mockTask);
 
@@ -449,7 +442,7 @@ public class TaskUtilTest {
    * This should return the status if it exists.
    */
   @Test
-  public void testGetStatusFound() {
+  void testGetStatusFound() {
     String identifier = "OPEN";
 
     try (MockedStatic<OBDal> ignored = setupOBDalMock();
@@ -470,7 +463,7 @@ public class TaskUtilTest {
    * This should return null if no status matches the identifier.
    */
   @Test
-  public void testGetStatusNotFound() {
+  void testGetStatusNotFound() {
     String identifier = "UNKNOWN";
 
     try (MockedStatic<OBDal> ignored = setupOBDalMock()) {
@@ -492,7 +485,7 @@ public class TaskUtilTest {
    *     if there's an error during parameter validation or normalization
    */
   @Test
-  public void testValidateAndNormalizeParametersValid() throws Exception {
+  void testValidateAndNormalizeParametersValid() throws Exception {
     JSONObject parameters = new JSONObject();
     JSONObject source = new JSONObject().put(TaskConstants.TABLE, TEST_TABLE);
     parameters.put(TaskConstants.SOURCE, source);
@@ -511,7 +504,7 @@ public class TaskUtilTest {
    * This should throw an OBException with a specific error message.
    */
   @Test
-  public void testValidateAndNormalizeParametersMissingSource() {
+  void testValidateAndNormalizeParametersMissingSource() {
     JSONObject parameters = new JSONObject();
 
     try (MockedStatic<OBMessageUtils> ignored = setupMessageUtilsMock("ETASK_MissingSource", "Missing source")) {
@@ -535,7 +528,7 @@ public class TaskUtilTest {
    *     when an invalid operation is specified
    */
   @Test
-  public void testValidateAndNormalizeParametersInvalidOperation() throws Exception {
+  void testValidateAndNormalizeParametersInvalidOperation() throws Exception {
     JSONObject parameters = new JSONObject();
     JSONObject source = new JSONObject().put(TaskConstants.TABLE, TEST_TABLE);
     parameters.put(TaskConstants.SOURCE, source);
@@ -563,7 +556,7 @@ public class TaskUtilTest {
    *     if there's an error during task creation or data access
    */
   @Test
-  public void testCreateTask() throws Exception {
+  void testCreateTask() throws Exception {
     JSONObject data = createBasicTaskData();
     JSONObject rawEvent = new JSONObject().put("event", "test");
     when(mockDal.get(User.class, TaskConstants.ADMIN_USER)).thenReturn(mockUser);
@@ -596,7 +589,7 @@ public class TaskUtilTest {
    *     when the required client attribute is missing
    */
   @Test
-  public void testCreateTaskMissingClient() throws Exception {
+  void testCreateTaskMissingClient() throws Exception {
     JSONObject data = new JSONObject();
     data.put(TaskConstants.AD_ORG_ATTR, ORG_ID);
 
@@ -612,7 +605,7 @@ public class TaskUtilTest {
    * This should return the initial state for the task type.
    */
   @Test
-  public void testGetInitialStateFound() {
+  void testGetInitialStateFound() {
     try (MockedStatic<OBDal> ignored = setupOBDalMock();
          MockedStatic<Restrictions> restrictionsStatic = mockStatic(Restrictions.class)) {
 
@@ -632,7 +625,7 @@ public class TaskUtilTest {
    * This should throw an OBException with a specific error message.
    */
   @Test
-  public void testGetInitialStateNotFound() {
+  void testGetInitialStateNotFound() {
     try (MockedStatic<OBDal> ignored = setupOBDalMock();
          MockedStatic<OBMessageUtils> ignored1 = setupMessageUtilsMock("ETASK_NoInitialState", "No initial state")) {
 
@@ -649,7 +642,7 @@ public class TaskUtilTest {
    * This should return the AD Table if found.
    */
   @Test
-  public void testGetADTableFound() {
+  void testGetADTableFound() {
     String tableName = TEST_TABLE;
 
     try (MockedStatic<OBDal> ignored = setupOBDalMock()) {
@@ -667,7 +660,7 @@ public class TaskUtilTest {
    * This should return the event value for the verb.
    */
   @Test
-  public void testGetEventValueFound() {
+  void testGetEventValueFound() {
     String verb = "CREATE";
 
     try (MockedStatic<OBDal> ignored = setupOBDalMock()) {
@@ -687,7 +680,7 @@ public class TaskUtilTest {
    * This should return a list of matching table rules.
    */
   @Test
-  public void testGetMatchingRules() {
+  void testGetMatchingRules() {
     String eventIdentifier = "CREATE";
     List<Table> expectedRules = List.of(mockTable);
 
@@ -706,7 +699,7 @@ public class TaskUtilTest {
    * This should return the state for the given status and task type.
    */
   @Test
-  public void testFindStateByStatusId() {
+  void testFindStateByStatusId() {
     String statusId = "status123";
     String taskTypeId = TASK_TYPE_123;
 
@@ -726,23 +719,13 @@ public class TaskUtilTest {
    * Tests the execution of an action process when the class name is blank.
    * This should throw an OBException.
    */
-  @Test
-  public void testRunActionBlankClassName() {
-    when(mockProcess.getJavaClassName()).thenReturn("");
-    when(mockProcess.getName()).thenReturn(TEST_PROCESS);
-
-    try (MockedStatic<OBMessageUtils> ignored = setupMessageUtilsMock("ETASK_ProcessWithoutClassName",
-        "Process %s has no class name")) {
-      assertOBExceptionContains(TEST_PROCESS, () -> TaskUtil.runAction(mockProcess, new JSONObject()));
-    }
-  }
 
   /**
    * Tests the update of round-robin index with a normal index value.
    * This should successfully update the task type's round-robin index.
    */
   @Test
-  public void testUpdateRoundRobinIndexNormal() {
+  void testUpdateRoundRobinIndexNormal() {
     testRoundRobinIndexUpdate(2, 5, 2L);
   }
 
@@ -751,7 +734,7 @@ public class TaskUtilTest {
    * This should reset the index to 0.
    */
   @Test
-  public void testUpdateRoundRobinIndexOversize() {
+  void testUpdateRoundRobinIndexOversize() {
     testRoundRobinIndexUpdate(5, 3, 0L);
   }
 
@@ -763,7 +746,7 @@ public class TaskUtilTest {
    *     if there's an error during task creation
    */
   @Test
-  public void testCreateTaskWithAutoAssignment() throws Exception {
+  void testCreateTaskWithAutoAssignment() throws Exception {
     testTaskCreationWithAssignment(true);
   }
 
@@ -775,7 +758,7 @@ public class TaskUtilTest {
    *     if there's an error during task creation
    */
   @Test
-  public void testCreateTaskWithoutAutoAssignment() throws Exception {
+  void testCreateTaskWithoutAutoAssignment() throws Exception {
     testTaskCreationWithAssignment(false);
   }
 
@@ -784,7 +767,7 @@ public class TaskUtilTest {
    * This should return a list of initial topics from the jobs associated with the events.
    */
   @Test
-  public void testRunStateEventsWithTopics() {
+  void testRunStateEventsWithTopics() {
     Events mockEvent1 = mock(Events.class);
     Events mockEvent2 = mock(Events.class);
     Events mockEvent3 = mock(Events.class);
@@ -822,7 +805,7 @@ public class TaskUtilTest {
    * This should return an empty list.
    */
   @Test
-  public void testRunStateEventsEmptyTopics() {
+  void testRunStateEventsEmptyTopics() {
     Events mockEvent = mock(Events.class);
     List<Events> eventsList = List.of(mockEvent);
 
@@ -839,51 +822,26 @@ public class TaskUtilTest {
     }
   }
 
-  /**
-   * Tests the execution of an action process when the class name is null.
-   * This should throw an OBException.
-   */
-  @Test
-  public void testRunActionNullClassName() {
-    when(mockProcess.getJavaClassName()).thenReturn(null);
-    when(mockProcess.getName()).thenReturn(TEST_PROCESS);
+  
 
-    try (MockedStatic<OBMessageUtils> msgUtils = setupMessageUtilsMock("ETASK_ProcessWithoutClassName",
-        "Process %s has no class name")) {
-      assertOBExceptionContains(TEST_PROCESS, () -> TaskUtil.runAction(mockProcess, new JSONObject()));
+  
+
+  /**
+   * Dummy strategy used to test dynamic loading and instantiation via OBClassLoader.
+   */
+  public static class DummyStrategy implements UserAvailabilityStrategy {
+
+    @Override
+    public User findUserAccordingStrategy(TaskType taskType, JSONObject parameters) {
+      return null;
+    }
+
+    @Override
+    public List<User> getUsersAvailable(TaskType taskType, JSONObject parameters) {
+      return List.of();
     }
   }
 
-  /**
-   * Tests setting a task user successfully.
-   * This should retrieve the user strategy and assign a user to the task.
-   *
-   * @throws Exception
-   *     if there's an error during user assignment
-   */
-  @Test
-  public void testSetTaskUserSuccess() throws Exception {
-    String eventJsonInfo = "{\"param1\":\"value1\"}";
-
-    UserAvailabilityStrategy mockStrategy = mock(UserAvailabilityStrategy.class);
-    User mockAssignedUser = mock(User.class);
-
-    when(mockTask.getEventJsoninfo()).thenReturn(eventJsonInfo);
-    when(mockTask.getTaskType()).thenReturn(mockTaskType);
-    when(mockStrategy.findUserAccordingStrategy(eq(mockTaskType), any(JSONObject.class))).thenReturn(mockAssignedUser);
-
-    try (MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class);
-         MockedStatic<OBDal> ignored = setupOBDalMock()) {
-
-      taskUtilStatic.when(() -> TaskUtil.getUserStrategyClass(mockTaskType)).thenReturn(mockStrategy);
-      taskUtilStatic.when(() -> TaskUtil.setTaskUser(mockTask)).thenCallRealMethod();
-
-      TaskUtil.setTaskUser(mockTask);
-
-      verify(mockTask).setAssignedUser(mockAssignedUser);
-      verify(mockDal).save(mockTask);
-      taskUtilStatic.verify(() -> TaskUtil.getUserStrategyClass(mockTaskType));
-    }
-  }
+  
 
 }

@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+  <database name="MODIFIED TABLE ETAP_LOG_HEADER">
+    <table name="ETAP_LOG_HEADER" primaryKey="ETAP_LH_KEY">
+      <column name="EM_ETASK_ETASK_TASK_ID" primaryKey="false" required="false" type="VARCHAR" size="32" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+      <foreign-key foreignTable="ETASK_TASK" name="EM_ETASK_ETAP_LH_TASK">
+        <reference local="EM_ETASK_ETASK_TASK_ID" foreign="ETASK_TASK_ID"/>
+      </foreign-key>
+    </table>
+  </database>
