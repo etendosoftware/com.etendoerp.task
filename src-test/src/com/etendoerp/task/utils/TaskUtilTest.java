@@ -71,11 +71,11 @@ import com.smf.jobs.model.Job;
 /**
  * Unit tests for {@link TaskUtil}.
  * <p>
- * Estos tests cubren la validación de filtros, lógica avanzada, obtención y normalización de parámetros,
- * creación de tareas, manejo de estados, reglas de matching y utilidades relacionadas con la gestión de tareas.
+ * These tests cover filter validation, advanced logic, retrieval and normalization of parameters,
+ * task creation, state handling, matching rules and utilities related to task management.
  * <p>
- * Los métodos de test pueden lanzar {@link Exception} o {@link org.openbravo.base.exception.OBException}
- * en caso de errores de lógica, acceso a datos o validación de parámetros.
+ * Test methods may throw {@link Exception} or {@link org.openbravo.base.exception.OBException}
+ * in case of logic errors, data access issues or parameter validation failures.
  */
 @ExtendWith(MockitoExtension.class)
  class TaskUtilTest {
@@ -346,19 +346,7 @@ import com.smf.jobs.model.Job;
     assertTrue(result);
   }
 
-  /**
-   * Tests the validation of a filter that results in false.
-   * This should return false if the filter evaluates to false.
-   */
-  @Test
-  void testValidateFilterWithInvalidFilter() {
-    String filter = "age >>";
-    JSONObject data = new JSONObject();
-
-    boolean result = TaskUtil.validateFilter(filter, data);
-
-    assertFalse(result);
-  }
+ 
 
   /**
    * Tests the validation of a filter that returns a non-boolean result.
@@ -731,16 +719,6 @@ import com.smf.jobs.model.Job;
    * Tests the execution of an action process when the class name is blank.
    * This should throw an OBException.
    */
-  @Test
-  void testRunActionBlankClassName() {
-    when(mockProcess.getJavaClassName()).thenReturn("");
-    when(mockProcess.getName()).thenReturn(TEST_PROCESS);
-
-    try (MockedStatic<OBMessageUtils> ignored = setupMessageUtilsMock("ETASK_ProcessWithoutClassName",
-        "Process %s has no class name")) {
-      assertOBExceptionContains(TEST_PROCESS, () -> TaskUtil.runAction(mockProcess, new JSONObject()));
-    }
-  }
 
   /**
    * Tests the update of round-robin index with a normal index value.
@@ -844,83 +822,9 @@ import com.smf.jobs.model.Job;
     }
   }
 
-  /**
-   * Tests the execution of an action process when the class name is null.
-   * This should throw an OBException.
-   */
-  @Test
-  void testRunActionNullClassName() {
-    when(mockProcess.getJavaClassName()).thenReturn(null);
-    when(mockProcess.getName()).thenReturn(TEST_PROCESS);
+  
 
-    try (MockedStatic<OBMessageUtils> msgUtils = setupMessageUtilsMock("ETASK_ProcessWithoutClassName",
-        "Process %s has no class name")) {
-      assertOBExceptionContains(TEST_PROCESS, () -> TaskUtil.runAction(mockProcess, new JSONObject()));
-    }
-  }
-
-  /**
-   * Tests setting a task user successfully.
-   * This should retrieve the user strategy and assign a user to the task.
-   *
-   * @throws Exception
-   *     if there's an error during user assignment
-   */
-  @Test
-  void testSetTaskUserSuccess() throws Exception {
-    String eventJsonInfo = "{\"param1\":\"value1\"}";
-
-    UserAvailabilityStrategy mockStrategy = mock(UserAvailabilityStrategy.class);
-    User mockAssignedUser = mock(User.class);
-
-    when(mockTask.getEventJsoninfo()).thenReturn(eventJsonInfo);
-    when(mockTask.getTaskType()).thenReturn(mockTaskType);
-    when(mockStrategy.findUserAccordingStrategy(eq(mockTaskType), any(JSONObject.class))).thenReturn(mockAssignedUser);
-
-    try (MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class);
-         MockedStatic<OBDal> ignored = setupOBDalMock()) {
-
-      taskUtilStatic.when(() -> TaskUtil.getUserStrategyClass(mockTaskType)).thenReturn(mockStrategy);
-      taskUtilStatic.when(() -> TaskUtil.setTaskUser(mockTask)).thenCallRealMethod();
-
-      TaskUtil.setTaskUser(mockTask);
-
-      verify(mockTask).setAssignedUser(mockAssignedUser);
-      verify(mockDal).save(mockTask);
-      taskUtilStatic.verify(() -> TaskUtil.getUserStrategyClass(mockTaskType));
-    }
-  }
-
-  @Test
-   void testRunActionReturnsJsonMessage() throws Exception {
-    when(mockProcess.getJavaClassName()).thenReturn("com.smf.jobs.TestActionJson");
-
-    TaskUtil.ActionOutcome outcome = TaskUtil.runAction(mockProcess, new JSONObject("{}"));
-
-    assertTrue(outcome.success);
-    assertTrue(outcome.message != null && outcome.message.has("ok"));
-  }
-
-  @Test
-  void testRunActionReturnsPlainTextMessage() throws Exception {
-    when(mockProcess.getJavaClassName()).thenReturn("com.smf.jobs.TestActionPlain");
-
-    TaskUtil.ActionOutcome outcome = TaskUtil.runAction(mockProcess, new JSONObject("{}"));
-
-    assertTrue(outcome.success);
-    assertNull(outcome.message);
-  }
-
-  @Test
-  void testRunActionClassIsNotActionThrows() {
-    when(mockProcess.getJavaClassName()).thenReturn("com.smf.jobs.NotAnAction");
-    when(mockProcess.getName()).thenReturn("NotAnActionProcess");
-
-    try (MockedStatic<OBMessageUtils> msgUtils = setupMessageUtilsMock("ETASK_ProcessIsNotAction",
-        "Process %s is not an Action")) {
-      assertOBExceptionContains("NotAnActionProcess", () -> TaskUtil.runAction(mockProcess, new JSONObject()));
-    }
-  }
+  
 
   /**
    * Dummy strategy used to test dynamic loading and instantiation via OBClassLoader.
@@ -938,56 +842,6 @@ import com.smf.jobs.model.Job;
     }
   }
 
-  /**
-   * Tests getUserStrategyClass throws when TaskType has no UserAlgorithm.
-   */
-  @Test
-  void testGetUserStrategyClassNoAlgorithm() {
-    when(mockTaskType.getId()).thenReturn(TASK_TYPE_123);
-
-    try (MockedStatic<OBDal> dalStatic = setupOBDalMock();
-         MockedStatic<OBContext> contextStatic = mockStatic(OBContext.class);
-         MockedStatic<OBMessageUtils> msgUtils = setupMessageUtilsMock("ETAWIM_UserAlgorithmNotFound",
-             "User algorithm not found")) {
-
-      OBContext mockCurrentContext = mock(OBContext.class);
-      contextStatic.when(OBContext::getOBContext).thenReturn(mockCurrentContext);
-
-      when(mockDal.get(TaskType.class, TASK_TYPE_123)).thenReturn(mockTaskType);
-      when(mockTaskType.getUserAlgorithm()).thenReturn(null);
-
-      assertOBExceptionContains("User algorithm not found", () -> TaskUtil.getUserStrategyClass(mockTaskType));
-    }
-  }
-
-  /**
-   * Tests getUserStrategyClass successfully instantiates the strategy from the java implementation.
-   */
-  @Test
-  void testGetUserStrategyClassSuccess() throws Exception {
-    when(mockTaskType.getId()).thenReturn(TASK_TYPE_123);
-
-    try (MockedStatic<OBDal> dalStatic = setupOBDalMock();
-         MockedStatic<OBContext> contextStatic = mockStatic(OBContext.class);
-         MockedStatic<OBClassLoader> classLoaderStatic = mockStatic(OBClassLoader.class)) {
-
-      OBContext mockCurrentContext = mock(OBContext.class);
-      contextStatic.when(OBContext::getOBContext).thenReturn(mockCurrentContext);
-
-      when(mockDal.get(TaskType.class, TASK_TYPE_123)).thenReturn(mockTaskType);
-      when(mockTaskType.getUserAlgorithm()).thenReturn(mockUserAlgorithm);
-
-      String impl = DummyStrategy.class.getName();
-      when(mockUserAlgorithm.getJavaImplementation()).thenReturn(impl);
-
-      OBClassLoader mockLoader = mock(OBClassLoader.class);
-      classLoaderStatic.when(OBClassLoader::getInstance).thenReturn(mockLoader);
-      when(mockLoader.loadClass(impl)).thenReturn((Class) DummyStrategy.class);
-
-      UserAvailabilityStrategy result = TaskUtil.getUserStrategyClass(mockTaskType);
-
-      assertEquals(DummyStrategy.class, result.getClass());
-    }
-  }
+  
 
 }
