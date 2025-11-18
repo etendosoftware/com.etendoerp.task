@@ -470,6 +470,7 @@ public final class TaskUtil {
       User user = OBContext.getOBContext().getUser();
 
       task.setTaskType(taskType);
+      task.setPriority(taskType.getPriority());
       task.setStatus(status);
       task.setClient(client);
       task.setOrganization(org);
