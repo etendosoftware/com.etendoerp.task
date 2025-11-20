@@ -1699,8 +1699,9 @@ The value is set on task creation and is rarely modified afterwards. Stored as p
 <!--D8BBC9A104764F9896AA19A04A2D19DE-->  <AD_ORG_ID><![CDATA[0]]></AD_ORG_ID>
 <!--D8BBC9A104764F9896AA19A04A2D19DE-->  <ISACTIVE><![CDATA[Y]]></ISACTIVE>
 <!--D8BBC9A104764F9896AA19A04A2D19DE-->  <NAME><![CDATA[Priority]]></NAME>
-<!--D8BBC9A104764F9896AA19A04A2D19DE-->  <DESCRIPTION><![CDATA[A defined level of importance or precedence.]]></DESCRIPTION>
-<!--D8BBC9A104764F9896AA19A04A2D19DE-->  <HELP><![CDATA[The Priority indicates the importance (high, medium, low) of this document]]></HELP>
+<!--D8BBC9A104764F9896AA19A04A2D19DE-->  <DESCRIPTION><![CDATA[Indicates the importance or urgency assigned to a task. This value is used to determine the order in which tasks should be attended, processed or reviewed.]]></DESCRIPTION>
+<!--D8BBC9A104764F9896AA19A04A2D19DE-->  <HELP><![CDATA[The Priority defines how relevant or time-sensitive a task or process is.
+Each priority level is configured in the system through the corresponding list in ADList, allowing organizations to define their own hierarchy (e.g., Critical, High, Medium, Low, Trivial, etc.).]]></HELP>
 <!--D8BBC9A104764F9896AA19A04A2D19DE-->  <ISCENTRALLYMAINTAINED><![CDATA[Y]]></ISCENTRALLYMAINTAINED>
 <!--D8BBC9A104764F9896AA19A04A2D19DE-->  <AD_TAB_ID><![CDATA[0D4974EF405B43B48DD24CFDFBC564E3]]></AD_TAB_ID>
 <!--D8BBC9A104764F9896AA19A04A2D19DE-->  <AD_COLUMN_ID><![CDATA[83742D3B0AD44090A4B642BE4778B98F]]></AD_COLUMN_ID>
@@ -1727,8 +1728,9 @@ The value is set on task creation and is rarely modified afterwards. Stored as p
 <!--D96B5CCAB34D40B08E59A237CB29BDD7-->  <AD_ORG_ID><![CDATA[0]]></AD_ORG_ID>
 <!--D96B5CCAB34D40B08E59A237CB29BDD7-->  <ISACTIVE><![CDATA[Y]]></ISACTIVE>
 <!--D96B5CCAB34D40B08E59A237CB29BDD7-->  <NAME><![CDATA[Priority]]></NAME>
-<!--D96B5CCAB34D40B08E59A237CB29BDD7-->  <DESCRIPTION><![CDATA[A defined level of importance or precedence.]]></DESCRIPTION>
-<!--D96B5CCAB34D40B08E59A237CB29BDD7-->  <HELP><![CDATA[The Priority indicates the importance (high, medium, low) of this document]]></HELP>
+<!--D96B5CCAB34D40B08E59A237CB29BDD7-->  <DESCRIPTION><![CDATA[Indicates the importance or urgency assigned to a task. This value is used to determine the order in which tasks should be attended, processed or reviewed.]]></DESCRIPTION>
+<!--D96B5CCAB34D40B08E59A237CB29BDD7-->  <HELP><![CDATA[The Priority defines how relevant or time-sensitive a task or process is.
+Each priority level is configured in the system through the corresponding list in ADList, allowing organizations to define their own hierarchy (e.g., Critical, High, Medium, Low, Trivial, etc.).]]></HELP>
 <!--D96B5CCAB34D40B08E59A237CB29BDD7-->  <ISCENTRALLYMAINTAINED><![CDATA[Y]]></ISCENTRALLYMAINTAINED>
 <!--D96B5CCAB34D40B08E59A237CB29BDD7-->  <AD_TAB_ID><![CDATA[4B37A26B63A54069B1D6D11397D4CD60]]></AD_TAB_ID>
 <!--D96B5CCAB34D40B08E59A237CB29BDD7-->  <AD_COLUMN_ID><![CDATA[EF48D2840E584DDDBCE57347994C4753]]></AD_COLUMN_ID>
