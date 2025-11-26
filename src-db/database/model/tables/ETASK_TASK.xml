@@ -57,6 +57,10 @@
         <default/>
         <onCreateDefault/>
       </column>
+      <column name="PRIORITY" primaryKey="false" required="false" type="VARCHAR" size="60" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
       <foreign-key foreignTable="AD_ROLE" name="ETASK_TASK_ASSGND_ROLE">
         <reference local="ASSIGNED_ROLE" foreign="AD_ROLE_ID"/>
       </foreign-key>

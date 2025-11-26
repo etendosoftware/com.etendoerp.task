@@ -49,6 +49,10 @@
         <default><![CDATA[0711B9DECC004FC8ACA751E19DF18BFB]]></default>
         <onCreateDefault/>
       </column>
+      <column name="PRIORITY" primaryKey="false" required="false" type="VARCHAR" size="60" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
       <foreign-key foreignTable="AD_CLIENT" name="ETASK_TASK_TYPE_AD_CLIENT_FK">
         <reference local="AD_CLIENT_ID" foreign="AD_CLIENT_ID"/>
       </foreign-key>
