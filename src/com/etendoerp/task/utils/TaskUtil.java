@@ -456,7 +456,7 @@ public final class TaskUtil {
    *     if an error occurs during task creation
    */
   public static Task createTask(TaskType taskType, Status status, boolean assignOperatorAutomatically,
-      JSONObject parameters, OBContext entityContex) {
+      JSONObject parameters, OBContext entityContex, String priority) {
     try {
       OBContext.setAdminMode(true);
       OBContext.setOBContext(entityContex);
@@ -470,7 +470,6 @@ public final class TaskUtil {
       User user = OBContext.getOBContext().getUser();
 
       task.setTaskType(taskType);
-      task.setPriority(taskType.getPriority());
       task.setStatus(status);
       task.setClient(client);
       task.setOrganization(org);
@@ -480,6 +479,12 @@ public final class TaskUtil {
 
       if (assignOperatorAutomatically) {
         setTaskUser(task);
+      }
+
+      if (StringUtils.isNotBlank(priority)) {
+        task.setPriority(priority);
+      } else {
+        task.setPriority(taskType.getPriority());
       }
 
       OBDal.getInstance().save(task);

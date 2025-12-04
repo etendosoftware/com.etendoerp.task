@@ -234,7 +234,7 @@ import com.smf.jobs.model.Job;
       setupTaskCreationMocks();
 
       taskUtilStatic.when(() -> TaskUtil.createTask(any(TaskType.class), any(Status.class),
-              anyBoolean(), any(JSONObject.class), any(OBContext.class)))
+              anyBoolean(), any(JSONObject.class), any(OBContext.class), null))
           .thenCallRealMethod();
 
       if (assignOperatorAutomatically) {
@@ -242,7 +242,7 @@ import com.smf.jobs.model.Job;
       }
 
       Task result = TaskUtil.createTask(mockTaskType, mockStatus, assignOperatorAutomatically, parameters,
-          mockEntityContext);
+          mockEntityContext, null);
 
       assertEquals(mockTask, result);
       verifyTaskCreation();
