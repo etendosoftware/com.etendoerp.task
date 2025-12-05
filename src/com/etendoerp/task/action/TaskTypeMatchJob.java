@@ -1,3 +1,19 @@
+/*
+ *************************************************************************
+ * The contents of this file are subject to the Etendo License
+ * (the "License"), you may not use this file except in compliance with
+ * the License.
+ * You may obtain a copy of the License at
+ * https://github.com/etendosoftware/etendo_core/blob/main/legal/Etendo_license.txt
+ * Software distributed under the License is distributed on an
+ * "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ * All portions are Copyright © 2021–2025 FUTIT SERVICES, S.L
+ * All Rights Reserved.
+ * Contributor(s): Futit Services S.L.
+ *************************************************************************
+ */
 package com.etendoerp.task.action;
 
 import java.util.ArrayList;
@@ -114,9 +130,14 @@ public class TaskTypeMatchJob extends Action {
 
         //The initial state is obtained
         State init = TaskUtil.getInitialState(rule.getTaskType());
+        JSONObject taskParams = new JSONObject(norm.toString());
+
+        taskParams.put("ad_client_id", after.getString(TaskConstants.AD_CLIENT_ATTR));
+        taskParams.put("ad_org_id", after.getString(TaskConstants.AD_ORG_ATTR));
 
         //Task creation
-        Task newTask = TaskUtil.createTask(rule, init, after, norm, true);
+        Task newTask = TaskUtil.createTask(rule.getTaskType(), init.getTaskStatus(), true, taskParams,
+            OBContext.getOBContext());
         OBDal.getInstance().save(newTask);
         OBDal.getInstance().flush();
 
@@ -180,10 +201,8 @@ public class TaskTypeMatchJob extends Action {
     if (isCreate) {
       boolean auto = StringUtils.equalsIgnoreCase(after.optString(TaskConstants.CREATED_AUTOMATICALLY, "Y"), "Y");
       if (!auto) {
-        State st = TaskUtil.findStateByStatusId(
-            after.getString(TaskConstants.STATUS),
-            after.getString(TaskConstants.TASK_TYPE_ID_PROPERTY)
-        );
+        State st = TaskUtil.findStateByStatusId(after.getString(TaskConstants.STATUS),
+            after.getString(TaskConstants.TASK_TYPE_ID_PROPERTY));
         topics.addAll(TaskUtil.runStateEvents(st));
       }
     } else if (isUpdate) {
@@ -191,10 +210,7 @@ public class TaskTypeMatchJob extends Action {
       String oldSt = before == null ? null : before.optString(TaskConstants.STATUS, null);
       String newSt = after.getString(TaskConstants.STATUS);
       if (!StringUtils.equals(newSt, oldSt)) {
-        State st = TaskUtil.findStateByStatusId(
-            newSt,
-            after.getString(TaskConstants.TASK_TYPE_ID_PROPERTY)
-        );
+        State st = TaskUtil.findStateByStatusId(newSt, after.getString(TaskConstants.TASK_TYPE_ID_PROPERTY));
         topics.addAll(TaskUtil.runStateEvents(st));
       }
     }
@@ -261,8 +277,8 @@ public class TaskTypeMatchJob extends Action {
       // Default user ID if not specified
       return "100";
     }
-    if (taskData.has(TaskConstants.ASSIGNED_USER) && taskData.optString(TaskConstants.ASSIGNED_USER, null) != null && !StringUtils.equals(
-        taskData.optString(TaskConstants.ASSIGNED_USER, null), "null")) {
+    if (taskData.has(TaskConstants.ASSIGNED_USER) && taskData.optString(TaskConstants.ASSIGNED_USER,
+        null) != null && !StringUtils.equals(taskData.optString(TaskConstants.ASSIGNED_USER, null), "null")) {
       return taskData.optString(TaskConstants.ASSIGNED_USER);
     }
     return taskData.optString("createdby");
@@ -308,12 +324,9 @@ public class TaskTypeMatchJob extends Action {
         resultJsonObj.put(TaskConstants.MESSAGE, msg.toString());
       }
 
-      resultJsonObj.put(
-          TaskConstants.STATE,
-          tasksInfo == null || tasksInfo.isEmpty()
-              ? JSONObject.NULL
-              : new org.codehaus.jettison.json.JSONArray(tasksInfo)
-      );
+      resultJsonObj.put(TaskConstants.STATE,
+          tasksInfo == null || tasksInfo.isEmpty() ? JSONObject.NULL : new org.codehaus.jettison.json.JSONArray(
+              tasksInfo));
 
     } catch (Exception e) {
       throw new OBException(e);
