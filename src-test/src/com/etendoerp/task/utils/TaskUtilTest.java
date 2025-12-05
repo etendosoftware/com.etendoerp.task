@@ -892,6 +892,33 @@ public class TaskUtilTest {
   }
 
   /**
+   * Verifies that getUserStrategyClass throws an OBException
+   * when the task type has no user algorithm configured.
+   */
+  @Test
+  void testGetUserStrategyClassThrowsWhenNoAlgorithm() {
+    String taskTypeId = TASK_TYPE_123;
+
+    when(mockTaskType.getId()).thenReturn(taskTypeId);
+    when(mockTaskType.getUserAlgorithm()).thenReturn(null);
+
+    try (MockedStatic<OBContext> contextStatic = mockStatic(
+        OBContext.class); MockedStatic<OBDal> dalStatic = setupOBDalMock(); MockedStatic<OBMessageUtils> msgStatic = setupMessageUtilsMock(
+        "ETAWIM_UserAlgorithmNotFound", "User algorithm not found")) {
+
+      OBContext mockCurrentContext = mock(OBContext.class);
+      contextStatic.when(OBContext::getOBContext).thenReturn(mockCurrentContext);
+
+      when(mockDal.get(TaskType.class, taskTypeId)).thenReturn(mockTaskType);
+
+      OBException ex = assertThrows(OBException.class, () -> TaskUtil.getUserStrategyClass(mockTaskType));
+
+      assertEquals("User algorithm not found", ex.getMessage());
+      contextStatic.verify(() -> OBContext.setOBContext(mockCurrentContext));
+    }
+  }
+
+  /**
    * Custom test exception for wrapping JSON exceptions in tests.
    */
   private static class TestException extends RuntimeException {
