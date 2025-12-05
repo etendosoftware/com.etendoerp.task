@@ -69,11 +69,11 @@ import com.smf.jobs.model.Job;
 /**
  * Unit tests for {@link TaskUtil}.
  * <p>
- * Estos tests cubren la validación de filtros, lógica avanzada, obtención y normalización de parámetros,
- * creación de tareas, manejo de estados, reglas de matching y utilidades relacionadas con la gestión de tareas.
+ * These tests cover filter validation, advanced logic, parameter retrieval and normalization,
+ * task creation, state handling, matching rules, and utilities related to task management.
  * <p>
- * Los métodos de test pueden lanzar {@link Exception} o {@link org.openbravo.base.exception.OBException}
- * en caso de errores de lógica, acceso a datos o validación de parámetros.
+ * The test methods may throw {@link Exception} or {@link org.openbravo.base.exception.OBException}
+ * in case of logic errors, data access issues, or parameter validation failures.
  */
 @ExtendWith(MockitoExtension.class)
 public class TaskUtilTest {
@@ -159,7 +159,6 @@ public class TaskUtilTest {
     return dalStatic;
   }
 
-
   /**
    * Helper method to setup common OBMessageUtils mock behavior for exceptions.
    */
@@ -183,9 +182,8 @@ public class TaskUtilTest {
   private void testRoundRobinIndexUpdate(int initialIndex, int size, long expectedFinalIndex) {
     String taskTypeId = TASK_TYPE_123;
 
-    try (MockedStatic<OBDal> dalStatic = setupOBDalMock();
-         MockedStatic<OBContext> contextStatic = mockStatic(OBContext.class);
-         MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class)) {
+    try (MockedStatic<OBDal> dalStatic = setupOBDalMock(); MockedStatic<OBContext> contextStatic = mockStatic(
+        OBContext.class); MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class)) {
 
       OBContext mockCurrentContext = mock(OBContext.class);
       contextStatic.when(OBContext::getOBContext).thenReturn(mockCurrentContext);
@@ -217,10 +215,9 @@ public class TaskUtilTest {
     JSONObject parameters = createBasicTaskData();
     OBContext mockEntityContext = mock(OBContext.class);
 
-    try (MockedStatic<OBContext> contextStatic = mockStatic(OBContext.class);
-         MockedStatic<OBDal> ignored = setupOBDalMock();
-         MockedStatic<OBProvider> providerStatic = mockStatic(OBProvider.class);
-         MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class)) {
+    try (MockedStatic<OBContext> contextStatic = mockStatic(
+        OBContext.class); MockedStatic<OBDal> ignored = setupOBDalMock(); MockedStatic<OBProvider> providerStatic = mockStatic(
+        OBProvider.class); MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class)) {
 
       providerStatic.when(OBProvider::getInstance).thenReturn(mockProvider);
       contextStatic.when(OBContext::getOBContext).thenReturn(mockEntityContext);
@@ -228,9 +225,9 @@ public class TaskUtilTest {
 
       setupTaskCreationMocks();
 
-      taskUtilStatic.when(() -> TaskUtil.createTask(any(TaskType.class), any(Status.class),
-              anyBoolean(), any(JSONObject.class), any(OBContext.class)))
-          .thenCallRealMethod();
+      taskUtilStatic.when(
+          () -> TaskUtil.createTask(any(TaskType.class), any(Status.class), anyBoolean(), any(JSONObject.class),
+              any(OBContext.class))).thenCallRealMethod();
 
       if (assignOperatorAutomatically) {
         taskUtilStatic.when(() -> TaskUtil.setTaskUser(any(Task.class))).then(invocation -> null);
@@ -294,7 +291,6 @@ public class TaskUtilTest {
     when(mockProvider.get(Task.class)).thenReturn(mockTask);
     when(mockDal.get(Client.class, CLIENT_123)).thenReturn(mockClient);
     when(mockDal.get(Organization.class, ORG_ID)).thenReturn(mockOrganization);
-
   }
 
   /**
@@ -313,15 +309,6 @@ public class TaskUtilTest {
   private void assertOBExceptionContains(String expectedContent, Runnable action) {
     OBException exception = assertThrows(OBException.class, action::run);
     assertTrue(exception.getMessage().contains(expectedContent));
-  }
-
-  /**
-   * Custom test exception for wrapping JSON exceptions in tests.
-   */
-  private static class TestException extends RuntimeException {
-    public TestException(Throwable cause) {
-      super(cause);
-    }
   }
 
   /**
@@ -396,11 +383,11 @@ public class TaskUtilTest {
     String clientId = "client-id";
 
     OBContext mockContext = mock(OBContext.class);
-    org.openbravo.dal.security.OrganizationStructureProvider ospMock =
-        mock(org.openbravo.dal.security.OrganizationStructureProvider.class);
+    org.openbravo.dal.security.OrganizationStructureProvider ospMock = mock(
+        org.openbravo.dal.security.OrganizationStructureProvider.class);
 
-    try (MockedStatic<OBDal> ignoredDal = setupOBDalMock();
-         MockedStatic<OBContext> contextStatic = mockStatic(OBContext.class)) {
+    try (MockedStatic<OBDal> ignoredDal = setupOBDalMock(); MockedStatic<OBContext> contextStatic = mockStatic(
+        OBContext.class)) {
 
       contextStatic.when(OBContext::getOBContext).thenReturn(mockContext);
 
@@ -431,8 +418,8 @@ public class TaskUtilTest {
     List<User> users = List.of(mockUser);
     List<Task> expectedTasks = List.of(mockTask);
 
-    try (MockedStatic<OBDal> ignored = setupOBDalMock();
-         MockedStatic<Restrictions> restrictionsStatic = mockStatic(Restrictions.class)) {
+    try (MockedStatic<OBDal> ignored = setupOBDalMock(); MockedStatic<Restrictions> restrictionsStatic = mockStatic(
+        Restrictions.class)) {
 
       when(mockDal.createCriteria(Task.class)).thenReturn(mockTaskCriteria);
       setupCriteriaListMock(mockTaskCriteria, expectedTasks);
@@ -452,8 +439,8 @@ public class TaskUtilTest {
   public void testGetStatusFound() {
     String identifier = "OPEN";
 
-    try (MockedStatic<OBDal> ignored = setupOBDalMock();
-         MockedStatic<Restrictions> restrictionsStatic = mockStatic(Restrictions.class)) {
+    try (MockedStatic<OBDal> ignored = setupOBDalMock(); MockedStatic<Restrictions> restrictionsStatic = mockStatic(
+        Restrictions.class)) {
 
       when(mockDal.createCriteria(Status.class)).thenReturn(mockStatusCriteria);
       setupCriteriaMock(mockStatusCriteria, mockStatus);
@@ -570,8 +557,8 @@ public class TaskUtilTest {
     when(mockTable.getTaskType()).thenReturn(mockTaskType);
     when(mockState.getTaskStatus()).thenReturn(mockStatus);
 
-    try (MockedStatic<OBDal> ignored = setupOBDalMock();
-         MockedStatic<OBProvider> providerStatic = mockStatic(OBProvider.class)) {
+    try (MockedStatic<OBDal> ignored = setupOBDalMock(); MockedStatic<OBProvider> providerStatic = mockStatic(
+        OBProvider.class)) {
 
       providerStatic.when(OBProvider::getInstance).thenReturn(mockProvider);
       setupTaskCreationMocks();
@@ -613,8 +600,8 @@ public class TaskUtilTest {
    */
   @Test
   public void testGetInitialStateFound() {
-    try (MockedStatic<OBDal> ignored = setupOBDalMock();
-         MockedStatic<Restrictions> restrictionsStatic = mockStatic(Restrictions.class)) {
+    try (MockedStatic<OBDal> ignored = setupOBDalMock(); MockedStatic<Restrictions> restrictionsStatic = mockStatic(
+        Restrictions.class)) {
 
       when(mockDal.createCriteria(State.class)).thenReturn(mockStateCriteria);
       setupCriteriaWithOrdering(mockStateCriteria, State.PROPERTY_SEQUENCENO, true);
@@ -633,8 +620,8 @@ public class TaskUtilTest {
    */
   @Test
   public void testGetInitialStateNotFound() {
-    try (MockedStatic<OBDal> ignored = setupOBDalMock();
-         MockedStatic<OBMessageUtils> ignored1 = setupMessageUtilsMock("ETASK_NoInitialState", "No initial state")) {
+    try (MockedStatic<OBDal> ignored = setupOBDalMock(); MockedStatic<OBMessageUtils> ignored1 = setupMessageUtilsMock(
+        "ETASK_NoInitialState", "No initial state")) {
 
       when(mockDal.createCriteria(State.class)).thenReturn(mockStateCriteria);
       setupCriteriaWithOrdering(mockStateCriteria, State.PROPERTY_SEQUENCENO, true);
@@ -801,8 +788,8 @@ public class TaskUtilTest {
     when(mockJob1.getEtapInitialTopic()).thenReturn("topic1");
     when(mockJob2.getEtapInitialTopic()).thenReturn("topic2");
 
-    try (MockedStatic<OBDal> ignored = setupOBDalMock();
-         MockedStatic<Restrictions> restrictionsStatic = mockStatic(Restrictions.class)) {
+    try (MockedStatic<OBDal> ignored = setupOBDalMock(); MockedStatic<Restrictions> restrictionsStatic = mockStatic(
+        Restrictions.class)) {
 
       when(mockDal.createCriteria(Events.class)).thenReturn(mockEventsCriteria);
       setupCriteriaWithOrdering(mockEventsCriteria, Events.PROPERTY_SEQUENCENO, true);
@@ -872,8 +859,8 @@ public class TaskUtilTest {
     when(mockTask.getTaskType()).thenReturn(mockTaskType);
     when(mockStrategy.findUserAccordingStrategy(eq(mockTaskType), any(JSONObject.class))).thenReturn(mockAssignedUser);
 
-    try (MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class);
-         MockedStatic<OBDal> ignored = setupOBDalMock()) {
+    try (MockedStatic<TaskUtil> taskUtilStatic = mockStatic(
+        TaskUtil.class); MockedStatic<OBDal> ignored = setupOBDalMock()) {
 
       taskUtilStatic.when(() -> TaskUtil.getUserStrategyClass(mockTaskType)).thenReturn(mockStrategy);
       taskUtilStatic.when(() -> TaskUtil.setTaskUser(mockTask)).thenCallRealMethod();
@@ -886,4 +873,30 @@ public class TaskUtilTest {
     }
   }
 
+  /**
+   * Tests the validation of a blank (null/empty) filter.
+   * A blank filter should be treated as true so the rule
+   * always matches.
+   *
+   * @throws Exception
+   *     if there's an error during filter validation
+   */
+  @Test
+  void testValidateFilterWithBlankFilterReturnsTrue() throws Exception {
+    String filter = null;
+    JSONObject data = new JSONObject().put("anyField", "anyValue");
+
+    boolean result = TaskUtil.validateFilter(filter, data);
+
+    assertTrue(result);
+  }
+
+  /**
+   * Custom test exception for wrapping JSON exceptions in tests.
+   */
+  private static class TestException extends RuntimeException {
+    public TestException(Throwable cause) {
+      super(cause);
+    }
+  }
 }
