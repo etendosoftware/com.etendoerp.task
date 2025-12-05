@@ -17,7 +17,6 @@ package com.etendoerp.task.utils;
 import static com.etendoerp.task.TaskTestsConstants.CLIENT_123;
 import static com.etendoerp.task.TaskTestsConstants.ORG_ID;
 import static com.etendoerp.task.TaskTestsConstants.TASK_TYPE_123;
-import static com.etendoerp.task.TaskTestsConstants.TEST_PROCESS;
 import static com.etendoerp.task.TaskTestsConstants.TEST_TABLE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -25,8 +24,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -46,7 +43,6 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openbravo.base.exception.OBException;
 import org.openbravo.base.provider.OBProvider;
-import org.openbravo.base.util.OBClassLoader;
 import org.openbravo.client.application.Process;
 import org.openbravo.dal.core.OBContext;
 import org.openbravo.dal.service.OBCriteria;
@@ -222,10 +218,9 @@ import com.smf.jobs.model.Job;
     JSONObject parameters = createBasicTaskData();
     OBContext mockEntityContext = mock(OBContext.class);
 
-    try (MockedStatic<OBContext> contextStatic = mockStatic(OBContext.class);
-         MockedStatic<OBDal> ignored = setupOBDalMock();
-         MockedStatic<OBProvider> providerStatic = mockStatic(OBProvider.class);
-         MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class)) {
+    try (MockedStatic<OBContext> contextStatic = mockStatic(
+        OBContext.class); MockedStatic<OBDal> ignored = setupOBDalMock(); MockedStatic<OBProvider> providerStatic = mockStatic(
+        OBProvider.class); MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class)) {
 
       providerStatic.when(OBProvider::getInstance).thenReturn(mockProvider);
       contextStatic.when(OBContext::getOBContext).thenReturn(mockEntityContext);
@@ -233,16 +228,15 @@ import com.smf.jobs.model.Job;
 
       setupTaskCreationMocks();
 
-      taskUtilStatic.when(() -> TaskUtil.createTask(any(TaskType.class), any(Status.class),
-              anyBoolean(), any(JSONObject.class), any(OBContext.class)))
-          .thenCallRealMethod();
+      taskUtilStatic.when(() -> TaskUtil.createTask(mockTaskType, mockStatus, assignOperatorAutomatically, parameters,
+          mockEntityContext, null)).thenCallRealMethod();
 
       if (assignOperatorAutomatically) {
         taskUtilStatic.when(() -> TaskUtil.setTaskUser(any(Task.class))).then(invocation -> null);
       }
 
       Task result = TaskUtil.createTask(mockTaskType, mockStatus, assignOperatorAutomatically, parameters,
-          mockEntityContext);
+          mockEntityContext, null);
 
       assertEquals(mockTask, result);
       verifyTaskCreation();
