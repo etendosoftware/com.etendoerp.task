@@ -38,6 +38,7 @@ import com.etendoerp.task.data.State;
 import com.etendoerp.task.data.Status;
 import com.etendoerp.task.data.Table;
 import com.etendoerp.task.data.Task;
+import com.etendoerp.task.data.TaskPriority;
 import com.etendoerp.task.data.TaskType;
 import com.etendoerp.task.data.TaskTypeInfo;
 import com.etendoerp.task.strategy.UserAvailabilityStrategy;
@@ -456,7 +457,7 @@ public final class TaskUtil {
    *     if an error occurs during task creation
    */
   public static Task createTask(TaskType taskType, Status status, boolean assignOperatorAutomatically,
-      JSONObject parameters, OBContext entityContex, String priority) {
+      JSONObject parameters, OBContext entityContex, TaskPriority priority) {
     try {
       OBContext.setAdminMode(true);
       OBContext.setOBContext(entityContex);
@@ -481,7 +482,7 @@ public final class TaskUtil {
         setTaskUser(task);
       }
 
-      if (StringUtils.isNotBlank(priority)) {
+      if (priority != null) {
         task.setPriority(priority);
       } else {
         task.setPriority(taskType.getPriority());

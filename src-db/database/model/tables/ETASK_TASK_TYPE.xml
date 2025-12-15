@@ -49,7 +49,7 @@
         <default><![CDATA[0711B9DECC004FC8ACA751E19DF18BFB]]></default>
         <onCreateDefault/>
       </column>
-      <column name="PRIORITY" primaryKey="false" required="false" type="VARCHAR" size="60" autoIncrement="false">
+      <column name="ETASK_TASK_PRIORITY_ID" primaryKey="false" required="false" type="VARCHAR" size="32" autoIncrement="false">
         <default/>
         <onCreateDefault/>
       </column>
@@ -61,6 +61,9 @@
       </foreign-key>
       <foreign-key foreignTable="AD_MODULE" name="ETASK_TASK_TYPE_MODULE_FK">
         <reference local="AD_MODULE_ID" foreign="AD_MODULE_ID"/>
+      </foreign-key>
+      <foreign-key foreignTable="ETASK_TASK_PRIORITY" name="ETASK_TASK_TYPE_PRIORITY">
+        <reference local="ETASK_TASK_PRIORITY_ID" foreign="ETASK_TASK_PRIORITY_ID"/>
       </foreign-key>
       <foreign-key foreignTable="ETASK_USER_ALGORITHM" name="ETASK_USER_ALG">
         <reference local="ETASK_USER_ALGORITHM_ID" foreign="ETASK_USER_ALGORITHM_ID"/>
