@@ -38,6 +38,7 @@ import com.etendoerp.task.data.State;
 import com.etendoerp.task.data.Status;
 import com.etendoerp.task.data.Table;
 import com.etendoerp.task.data.Task;
+import com.etendoerp.task.data.TaskPriority;
 import com.etendoerp.task.data.TaskType;
 import com.etendoerp.task.data.TaskTypeInfo;
 import com.etendoerp.task.strategy.UserAvailabilityStrategy;
@@ -435,28 +436,31 @@ public final class TaskUtil {
   }
 
   /**
-   * Creates and saves a new {@link Task} with the given type, status, and parameters.
+   * Creates and persists a {@link Task} with the given type, status, and parameters.
    * <p>
-   * Uses the provided {@link OBContext} to set client, organization, and user context.
-   * Optionally assigns an operator automatically.
+   * Uses the provided {@link OBContext} to set client, organization, and user data.
+   * If a priority is provided, it is assigned to the task; otherwise, the default
+   * priority from the {@link TaskType} is used.
    * </p>
    *
    * @param taskType
    *     the task type to assign
    * @param status
-   *     the initial status of the task
+   *     the initial task status
    * @param assignOperatorAutomatically
    *     whether to assign the operator automatically
    * @param parameters
-   *     JSON with additional task data (must include client and org IDs)
+   *     JSON containing task data, including client and organization IDs
    * @param entityContex
-   *     the OBContext to use during task creation
-   * @return the created and persisted {@link Task}
+   *     the OBContext used during task creation
+   * @param priority
+   *     the task priority, or {@code null} to use the task type default
+   * @return the created {@link Task}
    * @throws OBException
    *     if an error occurs during task creation
    */
   public static Task createTask(TaskType taskType, Status status, boolean assignOperatorAutomatically,
-      JSONObject parameters, OBContext entityContex, String priority) {
+      JSONObject parameters, OBContext entityContex, TaskPriority priority) {
     try {
       OBContext.setAdminMode(true);
       OBContext.setOBContext(entityContex);
@@ -481,7 +485,7 @@ public final class TaskUtil {
         setTaskUser(task);
       }
 
-      if (StringUtils.isNotBlank(priority)) {
+      if (priority != null) {
         task.setPriority(priority);
       } else {
         task.setPriority(taskType.getPriority());

@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
-  <database name="TABLE ETASK_TASK_TYPE">
-    <table name="ETASK_TASK_TYPE" primaryKey="ETASK_TASK_TYPE_PK">
-      <column name="ETASK_TASK_TYPE_ID" primaryKey="true" required="true" type="VARCHAR" size="32" autoIncrement="false">
+  <database name="TABLE ETASK_TASK_PRIORITY">
+    <table name="ETASK_TASK_PRIORITY" primaryKey="ETASK_PRIORITY_PK">
+      <column name="ETASK_TASK_PRIORITY_ID" primaryKey="true" required="true" type="VARCHAR" size="32" autoIncrement="false">
         <default/>
         <onCreateDefault/>
       </column>
@@ -33,7 +33,11 @@
         <default/>
         <onCreateDefault/>
       </column>
-      <column name="NAME" primaryKey="false" required="true" type="VARCHAR" size="200" autoIncrement="false">
+      <column name="NAME" primaryKey="false" required="true" type="VARCHAR" size="40" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+      <column name="COLOR" primaryKey="false" required="false" type="VARCHAR" size="9" autoIncrement="false">
         <default/>
         <onCreateDefault/>
       </column>
@@ -45,34 +49,26 @@
         <default/>
         <onCreateDefault/>
       </column>
-      <column name="ETASK_USER_ALGORITHM_ID" primaryKey="false" required="false" type="VARCHAR" size="32" autoIncrement="false">
-        <default><![CDATA[0711B9DECC004FC8ACA751E19DF18BFB]]></default>
-        <onCreateDefault/>
-      </column>
-      <column name="ETASK_TASK_PRIORITY_ID" primaryKey="false" required="false" type="VARCHAR" size="32" autoIncrement="false">
+      <column name="DESCRIPTION" primaryKey="false" required="false" type="VARCHAR" size="255" autoIncrement="false">
         <default/>
         <onCreateDefault/>
       </column>
-      <foreign-key foreignTable="AD_CLIENT" name="ETASK_TASK_TYPE_AD_CLIENT_FK">
+      <column name="SEQNO" primaryKey="false" required="false" type="DECIMAL" size="10,0" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+      <foreign-key foreignTable="AD_CLIENT" name="ETASK_PRIORITY_AD_CLIENT_FK">
         <reference local="AD_CLIENT_ID" foreign="AD_CLIENT_ID"/>
       </foreign-key>
-      <foreign-key foreignTable="AD_ORG" name="ETASK_TASK_TYPE_AD_ORG_FK">
+      <foreign-key foreignTable="AD_ORG" name="ETASK_PRIORITY_AD_ORG_FK">
         <reference local="AD_ORG_ID" foreign="AD_ORG_ID"/>
       </foreign-key>
-      <foreign-key foreignTable="AD_MODULE" name="ETASK_TASK_TYPE_MODULE_FK">
+      <foreign-key foreignTable="AD_MODULE" name="ETASK_PRIORITY_MODULE_FK">
         <reference local="AD_MODULE_ID" foreign="AD_MODULE_ID"/>
       </foreign-key>
-      <foreign-key foreignTable="ETASK_TASK_PRIORITY" name="ETASK_TASK_TYPE_PRIORITY">
-        <reference local="ETASK_TASK_PRIORITY_ID" foreign="ETASK_TASK_PRIORITY_ID"/>
-      </foreign-key>
-      <foreign-key foreignTable="ETASK_USER_ALGORITHM" name="ETASK_USER_ALG">
-        <reference local="ETASK_USER_ALGORITHM_ID" foreign="ETASK_USER_ALGORITHM_ID"/>
-      </foreign-key>
-      <unique name="ETASK_TASK_TYPE_VALUE_UNIQUE">
+      <unique name="ETASK_PRIORITY_VALUE_UNIQUE">
         <unique-column name="VALUE"/>
-        <unique-column name="AD_ORG_ID"/>
-        <unique-column name="AD_CLIENT_ID"/>
       </unique>
-      <check name="ETASK_TASK_TYPE_ISACTIVE_CHK"><![CDATA[ISACTIVE IN ('Y', 'N')]]></check>
+      <check name="ETASK_PRIORITY_ISACTIVE_CHK"><![CDATA[ISACTIVE IN ('Y', 'N')]]></check>
     </table>
   </database>
