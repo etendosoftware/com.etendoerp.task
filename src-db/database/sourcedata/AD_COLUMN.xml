@@ -2639,8 +2639,7 @@ The expression must follow Openbravo’s DynamicExpressionParser syntax. You can
 <!--8A3CA35D6694470685BB3EFD1A964A58-->  <ISACTIVE><![CDATA[Y]]></ISACTIVE>
 <!--8A3CA35D6694470685BB3EFD1A964A58-->  <NAME><![CDATA[Priority]]></NAME>
 <!--8A3CA35D6694470685BB3EFD1A964A58-->  <DESCRIPTION><![CDATA[Indicates the importance or urgency assigned to a task. This value is used to determine the order in which tasks should be attended, processed or reviewed.]]></DESCRIPTION>
-<!--8A3CA35D6694470685BB3EFD1A964A58-->  <HELP><![CDATA[The Priority defines how relevant or time-sensitive a task or process is.
-Each priority level is configured in the system through the corresponding list in ADList, allowing organizations to define their own hierarchy (e.g., Critical, High, Medium, Low, Trivial, etc.).]]></HELP>
+<!--8A3CA35D6694470685BB3EFD1A964A58-->  <HELP><![CDATA[Each priority level is configured in the system through the Task Priority window, allowing organizations to define and manage their own hierarchy (e.g., Critical, High, Medium, Low, Trivial, etc.).]]></HELP>
 <!--8A3CA35D6694470685BB3EFD1A964A58-->  <COLUMNNAME><![CDATA[Etask_Task_Priority_ID]]></COLUMNNAME>
 <!--8A3CA35D6694470685BB3EFD1A964A58-->  <AD_TABLE_ID><![CDATA[26BDE1A5526A42B2B2411FCA1E8A50F8]]></AD_TABLE_ID>
 <!--8A3CA35D6694470685BB3EFD1A964A58-->  <AD_REFERENCE_ID><![CDATA[19]]></AD_REFERENCE_ID>
@@ -3635,8 +3634,7 @@ Each priority level is configured in the system through the corresponding list i
 <!--CB0C0F15778940E6A9B7FDD6975CE2A9-->  <ISACTIVE><![CDATA[Y]]></ISACTIVE>
 <!--CB0C0F15778940E6A9B7FDD6975CE2A9-->  <NAME><![CDATA[Priority]]></NAME>
 <!--CB0C0F15778940E6A9B7FDD6975CE2A9-->  <DESCRIPTION><![CDATA[Indicates the importance or urgency assigned to a task. This value is used to determine the order in which tasks should be attended, processed or reviewed.]]></DESCRIPTION>
-<!--CB0C0F15778940E6A9B7FDD6975CE2A9-->  <HELP><![CDATA[The Priority defines how relevant or time-sensitive a task or process is.
-Each priority level is configured in the system through the corresponding list in ADList, allowing organizations to define their own hierarchy (e.g., Critical, High, Medium, Low, Trivial, etc.).]]></HELP>
+<!--CB0C0F15778940E6A9B7FDD6975CE2A9-->  <HELP><![CDATA[Each priority level is configured in the system through the Task Priority window, allowing organizations to define and manage their own hierarchy (e.g., Critical, High, Medium, Low, Trivial, etc.).]]></HELP>
 <!--CB0C0F15778940E6A9B7FDD6975CE2A9-->  <COLUMNNAME><![CDATA[Etask_Task_Priority_ID]]></COLUMNNAME>
 <!--CB0C0F15778940E6A9B7FDD6975CE2A9-->  <AD_TABLE_ID><![CDATA[B21F4EC171EE4CD49A175FB3C2485F78]]></AD_TABLE_ID>
 <!--CB0C0F15778940E6A9B7FDD6975CE2A9-->  <AD_REFERENCE_ID><![CDATA[19]]></AD_REFERENCE_ID>
