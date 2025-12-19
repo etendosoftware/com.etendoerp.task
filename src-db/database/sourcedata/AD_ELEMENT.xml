@@ -149,8 +149,7 @@
 <!--5F21F8E095A34626B1F7F446E134233B-->  <NAME><![CDATA[Priority]]></NAME>
 <!--5F21F8E095A34626B1F7F446E134233B-->  <PRINTNAME><![CDATA[Priority]]></PRINTNAME>
 <!--5F21F8E095A34626B1F7F446E134233B-->  <DESCRIPTION><![CDATA[Indicates the importance or urgency assigned to a task. This value is used to determine the order in which tasks should be attended, processed or reviewed.]]></DESCRIPTION>
-<!--5F21F8E095A34626B1F7F446E134233B-->  <HELP><![CDATA[The Priority defines how relevant or time-sensitive a task or process is.
-Each priority level is configured in the system through the corresponding list in ADList, allowing organizations to define their own hierarchy (e.g., Critical, High, Medium, Low, Trivial, etc.).]]></HELP>
+<!--5F21F8E095A34626B1F7F446E134233B-->  <HELP><![CDATA[Each priority level is configured in the system through the Task Priority window, allowing organizations to define and manage their own hierarchy (e.g., Critical, High, Medium, Low, Trivial, etc.).]]></HELP>
 <!--5F21F8E095A34626B1F7F446E134233B-->  <AD_MODULE_ID><![CDATA[D579A9E3954F4679B34D63E7B3F9E5A4]]></AD_MODULE_ID>
 <!--5F21F8E095A34626B1F7F446E134233B-->  <ISGLOSSARY><![CDATA[N]]></ISGLOSSARY>
 <!--5F21F8E095A34626B1F7F446E134233B--></AD_ELEMENT>

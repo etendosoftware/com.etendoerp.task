@@ -836,8 +836,7 @@ The value is set on task creation and is rarely modified afterwards. Stored as p
 <!--51A995FAE63B4CF691FAD723040D9D3F-->  <ISACTIVE><![CDATA[Y]]></ISACTIVE>
 <!--51A995FAE63B4CF691FAD723040D9D3F-->  <NAME><![CDATA[Priority]]></NAME>
 <!--51A995FAE63B4CF691FAD723040D9D3F-->  <DESCRIPTION><![CDATA[Indicates the importance or urgency assigned to a task. This value is used to determine the order in which tasks should be attended, processed or reviewed.]]></DESCRIPTION>
-<!--51A995FAE63B4CF691FAD723040D9D3F-->  <HELP><![CDATA[The Priority defines how relevant or time-sensitive a task or process is.
-Each priority level is configured in the system through the corresponding list in ADList, allowing organizations to define their own hierarchy (e.g., Critical, High, Medium, Low, Trivial, etc.).]]></HELP>
+<!--51A995FAE63B4CF691FAD723040D9D3F-->  <HELP><![CDATA[Each priority level is configured in the system through the Task Priority window, allowing organizations to define and manage their own hierarchy (e.g., Critical, High, Medium, Low, Trivial, etc.).]]></HELP>
 <!--51A995FAE63B4CF691FAD723040D9D3F-->  <ISCENTRALLYMAINTAINED><![CDATA[Y]]></ISCENTRALLYMAINTAINED>
 <!--51A995FAE63B4CF691FAD723040D9D3F-->  <AD_TAB_ID><![CDATA[0D4974EF405B43B48DD24CFDFBC564E3]]></AD_TAB_ID>
 <!--51A995FAE63B4CF691FAD723040D9D3F-->  <AD_COLUMN_ID><![CDATA[CB0C0F15778940E6A9B7FDD6975CE2A9]]></AD_COLUMN_ID>
@@ -2268,8 +2267,7 @@ Usually, company's internal identifiers for various records (products, customers
 <!--FC5CF7754F504F308F316348D14942ED-->  <ISACTIVE><![CDATA[Y]]></ISACTIVE>
 <!--FC5CF7754F504F308F316348D14942ED-->  <NAME><![CDATA[Priority]]></NAME>
 <!--FC5CF7754F504F308F316348D14942ED-->  <DESCRIPTION><![CDATA[Indicates the importance or urgency assigned to a task. This value is used to determine the order in which tasks should be attended, processed or reviewed.]]></DESCRIPTION>
-<!--FC5CF7754F504F308F316348D14942ED-->  <HELP><![CDATA[The Priority defines how relevant or time-sensitive a task or process is.
-Each priority level is configured in the system through the corresponding list in ADList, allowing organizations to define their own hierarchy (e.g., Critical, High, Medium, Low, Trivial, etc.).]]></HELP>
+<!--FC5CF7754F504F308F316348D14942ED-->  <HELP><![CDATA[Each priority level is configured in the system through the Task Priority window, allowing organizations to define and manage their own hierarchy (e.g., Critical, High, Medium, Low, Trivial, etc.).]]></HELP>
 <!--FC5CF7754F504F308F316348D14942ED-->  <ISCENTRALLYMAINTAINED><![CDATA[Y]]></ISCENTRALLYMAINTAINED>
 <!--FC5CF7754F504F308F316348D14942ED-->  <AD_TAB_ID><![CDATA[4B37A26B63A54069B1D6D11397D4CD60]]></AD_TAB_ID>
 <!--FC5CF7754F504F308F316348D14942ED-->  <AD_COLUMN_ID><![CDATA[8A3CA35D6694470685BB3EFD1A964A58]]></AD_COLUMN_ID>
