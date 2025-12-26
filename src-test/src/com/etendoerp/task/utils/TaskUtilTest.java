@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -78,7 +79,7 @@ import com.smf.jobs.model.Job;
  * in case of logic errors, data access issues or parameter validation failures.
  */
 @ExtendWith(MockitoExtension.class)
- class TaskUtilTest {
+class TaskUtilTest {
 
   @Mock
   private OBDal mockDal;
@@ -167,7 +168,6 @@ import com.smf.jobs.model.Job;
     return dalStatic;
   }
 
-
   /**
    * Helper method to setup common OBMessageUtils mock behavior for exceptions.
    */
@@ -191,9 +191,8 @@ import com.smf.jobs.model.Job;
   private void testRoundRobinIndexUpdate(int initialIndex, int size, long expectedFinalIndex) {
     String taskTypeId = TASK_TYPE_123;
 
-    try (MockedStatic<OBDal> dalStatic = setupOBDalMock();
-         MockedStatic<OBContext> contextStatic = mockStatic(OBContext.class);
-         MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class)) {
+    try (MockedStatic<OBDal> dalStatic = setupOBDalMock(); MockedStatic<OBContext> contextStatic = mockStatic(
+        OBContext.class); MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class)) {
 
       contextStatic.when(OBContext::getOBContext).thenReturn(mockOBContext);
       when(mockDal.get(TaskType.class, taskTypeId)).thenReturn(mockTaskType);
@@ -320,15 +319,6 @@ import com.smf.jobs.model.Job;
   }
 
   /**
-   * Custom test exception for wrapping JSON exceptions in tests.
-   */
-  private static class TestException extends RuntimeException {
-    public TestException(Throwable cause) {
-      super(cause);
-    }
-  }
-
-  /**
    * Tests the validation of a filter with a valid expression that evaluates to true.
    * This should return true when the filter condition is met by the provided data.
    *
@@ -344,8 +334,6 @@ import com.smf.jobs.model.Job;
 
     assertTrue(result);
   }
-
- 
 
   /**
    * Tests the validation of a filter that returns a non-boolean result.
@@ -387,11 +375,12 @@ import com.smf.jobs.model.Job;
     String orgId = "org-id";
     String clientId = "client-id";
 
-    org.openbravo.dal.security.OrganizationStructureProvider ospMock =
-        mock(org.openbravo.dal.security.OrganizationStructureProvider.class);
+    OBContext mockContext = mock(OBContext.class);
+    org.openbravo.dal.security.OrganizationStructureProvider ospMock = mock(
+        org.openbravo.dal.security.OrganizationStructureProvider.class);
 
-    try (MockedStatic<OBDal> ignoredDal = setupOBDalMock();
-         MockedStatic<OBContext> contextStatic = mockStatic(OBContext.class)) {
+    try (MockedStatic<OBDal> ignoredDal = setupOBDalMock(); MockedStatic<OBContext> contextStatic = mockStatic(
+        OBContext.class)) {
 
       contextStatic.when(OBContext::getOBContext).thenReturn(mockOBContext);
 
@@ -422,8 +411,8 @@ import com.smf.jobs.model.Job;
     List<User> users = List.of(mockUser);
     List<Task> expectedTasks = List.of(mockTask);
 
-    try (MockedStatic<OBDal> ignored = setupOBDalMock();
-         MockedStatic<Restrictions> restrictionsStatic = mockStatic(Restrictions.class)) {
+    try (MockedStatic<OBDal> ignored = setupOBDalMock(); MockedStatic<Restrictions> restrictionsStatic = mockStatic(
+        Restrictions.class)) {
 
       when(mockDal.createCriteria(Task.class)).thenReturn(mockTaskCriteria);
       setupCriteriaListMock(mockTaskCriteria, expectedTasks);
@@ -443,8 +432,8 @@ import com.smf.jobs.model.Job;
   void testGetStatusFound() {
     String identifier = "OPEN";
 
-    try (MockedStatic<OBDal> ignored = setupOBDalMock();
-         MockedStatic<Restrictions> restrictionsStatic = mockStatic(Restrictions.class)) {
+    try (MockedStatic<OBDal> ignored = setupOBDalMock(); MockedStatic<Restrictions> restrictionsStatic = mockStatic(
+        Restrictions.class)) {
 
       when(mockDal.createCriteria(Status.class)).thenReturn(mockStatusCriteria);
       setupCriteriaMock(mockStatusCriteria, mockStatus);
@@ -561,8 +550,8 @@ import com.smf.jobs.model.Job;
     when(mockTable.getTaskType()).thenReturn(mockTaskType);
     when(mockState.getTaskStatus()).thenReturn(mockStatus);
 
-    try (MockedStatic<OBDal> ignored = setupOBDalMock();
-         MockedStatic<OBProvider> providerStatic = mockStatic(OBProvider.class)) {
+    try (MockedStatic<OBDal> ignored = setupOBDalMock(); MockedStatic<OBProvider> providerStatic = mockStatic(
+        OBProvider.class)) {
 
       providerStatic.when(OBProvider::getInstance).thenReturn(mockProvider);
       setupTaskCreationMocks();
@@ -604,8 +593,8 @@ import com.smf.jobs.model.Job;
    */
   @Test
   void testGetInitialStateFound() {
-    try (MockedStatic<OBDal> ignored = setupOBDalMock();
-         MockedStatic<Restrictions> restrictionsStatic = mockStatic(Restrictions.class)) {
+    try (MockedStatic<OBDal> ignored = setupOBDalMock(); MockedStatic<Restrictions> restrictionsStatic = mockStatic(
+        Restrictions.class)) {
 
       when(mockDal.createCriteria(State.class)).thenReturn(mockStateCriteria);
       setupCriteriaWithOrdering(mockStateCriteria, State.PROPERTY_SEQUENCENO, true);
@@ -624,8 +613,8 @@ import com.smf.jobs.model.Job;
    */
   @Test
   void testGetInitialStateNotFound() {
-    try (MockedStatic<OBDal> ignored = setupOBDalMock();
-         MockedStatic<OBMessageUtils> ignored1 = setupMessageUtilsMock("ETASK_NoInitialState", "No initial state")) {
+    try (MockedStatic<OBDal> ignored = setupOBDalMock(); MockedStatic<OBMessageUtils> ignored1 = setupMessageUtilsMock(
+        "ETASK_NoInitialState", "No initial state")) {
 
       when(mockDal.createCriteria(State.class)).thenReturn(mockStateCriteria);
       setupCriteriaWithOrdering(mockStateCriteria, State.PROPERTY_SEQUENCENO, true);
@@ -714,11 +703,6 @@ import com.smf.jobs.model.Job;
   }
 
   /**
-   * Tests the execution of an action process when the class name is blank.
-   * This should throw an OBException.
-   */
-
-  /**
    * Tests the update of round-robin index with a normal index value.
    * This should successfully update the task type's round-robin index.
    */
@@ -782,8 +766,8 @@ import com.smf.jobs.model.Job;
     when(mockJob1.getEtapInitialTopic()).thenReturn("topic1");
     when(mockJob2.getEtapInitialTopic()).thenReturn("topic2");
 
-    try (MockedStatic<OBDal> ignored = setupOBDalMock();
-         MockedStatic<Restrictions> restrictionsStatic = mockStatic(Restrictions.class)) {
+    try (MockedStatic<OBDal> ignored = setupOBDalMock(); MockedStatic<Restrictions> restrictionsStatic = mockStatic(
+        Restrictions.class)) {
 
       when(mockDal.createCriteria(Events.class)).thenReturn(mockEventsCriteria);
       setupCriteriaWithOrdering(mockEventsCriteria, Events.PROPERTY_SEQUENCENO, true);
@@ -943,7 +927,34 @@ import com.smf.jobs.model.Job;
       utilStatic.when(() -> TaskUtil.getTaskTypeInfo(mockTaskType)).thenReturn(mockTaskTypeInfo);
       Long result = TaskUtil.getRoundRobinIndex(mockTaskType);
 
-      assertNull(result);
+      assertNull(result); 
+    }
+  }
+
+  /**
+   * Tests the validation of a blank (null/empty) filter.
+   * A blank filter should be treated as true so the rule
+   * always matches.
+   *
+   * @throws Exception
+   *     if there's an error during filter validation
+   */
+  @Test
+  void testValidateFilterWithBlankFilterReturnsTrue() throws Exception {
+    String filter = null;
+    JSONObject data = new JSONObject().put("anyField", "anyValue");
+
+    boolean result = TaskUtil.validateFilter(filter, data);
+
+    assertTrue(result);
+  }
+
+  /**
+   * Custom test exception for wrapping JSON exceptions in tests.
+   */
+  private static class TestException extends RuntimeException {
+    public TestException(Throwable cause) {
+      super(cause);
     }
   }
 
@@ -962,7 +973,4 @@ import com.smf.jobs.model.Job;
       return List.of();
     }
   }
-
-  
-
 }
