@@ -21,13 +21,16 @@ import static com.etendoerp.task.TaskTestsConstants.TEST_TABLE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -36,6 +39,7 @@ import java.util.Set;
 
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
+import org.hibernate.criterion.Criterion;
 import org.hibernate.criterion.Restrictions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,7 +48,6 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openbravo.base.exception.OBException;
 import org.openbravo.base.provider.OBProvider;
-import org.openbravo.base.util.OBClassLoader;
 import org.openbravo.client.application.Process;
 import org.openbravo.dal.core.OBContext;
 import org.openbravo.dal.service.OBCriteria;
@@ -153,6 +156,9 @@ class TaskUtilTest {
   @Mock
   private OBCriteria<TaskTypeInfo> mockTaskTypeInfoCriteria;
 
+  @Mock
+  private OBContext mockOBContext;
+
   /**
    * Helper method to setup common OBDal mock behavior.
    */
@@ -188,8 +194,7 @@ class TaskUtilTest {
     try (MockedStatic<OBDal> dalStatic = setupOBDalMock(); MockedStatic<OBContext> contextStatic = mockStatic(
         OBContext.class); MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class)) {
 
-      OBContext mockCurrentContext = mock(OBContext.class);
-      contextStatic.when(OBContext::getOBContext).thenReturn(mockCurrentContext);
+      contextStatic.when(OBContext::getOBContext).thenReturn(mockOBContext);
       when(mockDal.get(TaskType.class, taskTypeId)).thenReturn(mockTaskType);
 
       // Mock getTaskTypeInfo to return existing TaskTypeInfo
@@ -216,28 +221,26 @@ class TaskUtilTest {
    */
   private void testTaskCreationWithAssignment(boolean assignOperatorAutomatically) throws Exception {
     JSONObject parameters = createBasicTaskData();
-    OBContext mockEntityContext = mock(OBContext.class);
 
     try (MockedStatic<OBContext> contextStatic = mockStatic(
         OBContext.class); MockedStatic<OBDal> ignored = setupOBDalMock(); MockedStatic<OBProvider> providerStatic = mockStatic(
         OBProvider.class); MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class)) {
 
       providerStatic.when(OBProvider::getInstance).thenReturn(mockProvider);
-      contextStatic.when(OBContext::getOBContext).thenReturn(mockEntityContext);
-      when(mockEntityContext.getUser()).thenReturn(mockUser);
+      contextStatic.when(OBContext::getOBContext).thenReturn(mockOBContext);
+      when(mockOBContext.getUser()).thenReturn(mockUser);
 
       setupTaskCreationMocks();
 
-      taskUtilStatic.when(
-          () -> TaskUtil.createTask(any(TaskType.class), any(Status.class), anyBoolean(), any(JSONObject.class),
-              any(OBContext.class))).thenCallRealMethod();
+      taskUtilStatic.when(() -> TaskUtil.createTask(mockTaskType, mockStatus, assignOperatorAutomatically, parameters,
+          mockOBContext, null)).thenCallRealMethod();
 
       if (assignOperatorAutomatically) {
         taskUtilStatic.when(() -> TaskUtil.setTaskUser(any(Task.class))).then(invocation -> null);
       }
 
       Task result = TaskUtil.createTask(mockTaskType, mockStatus, assignOperatorAutomatically, parameters,
-          mockEntityContext);
+          mockOBContext, null);
 
       assertEquals(mockTask, result);
       verifyTaskCreation();
@@ -379,13 +382,13 @@ class TaskUtilTest {
     try (MockedStatic<OBDal> ignoredDal = setupOBDalMock(); MockedStatic<OBContext> contextStatic = mockStatic(
         OBContext.class)) {
 
-      contextStatic.when(OBContext::getOBContext).thenReturn(mockContext);
+      contextStatic.when(OBContext::getOBContext).thenReturn(mockOBContext);
 
-      when(mockContext.getCurrentOrganization()).thenReturn(mockOrganization);
-      when(mockContext.getCurrentClient()).thenReturn(mockClient);
+      when(mockOBContext.getCurrentOrganization()).thenReturn(mockOrganization);
+      when(mockOBContext.getCurrentClient()).thenReturn(mockClient);
       when(mockOrganization.getId()).thenReturn(orgId);
       when(mockClient.getId()).thenReturn(clientId);
-      when(mockContext.getOrganizationStructureProvider(clientId)).thenReturn(ospMock);
+      when(mockOBContext.getOrganizationStructureProvider(clientId)).thenReturn(ospMock);
       when(ospMock.getNaturalTree(orgId)).thenReturn(Set.of(orgId));
 
       when(mockDal.createCriteria(User.class)).thenReturn(mockUserCriteria);
@@ -798,6 +801,133 @@ class TaskUtilTest {
       List<String> result = TaskUtil.runStateEvents(mockState);
 
       assertTrue(result.isEmpty());
+    }
+  }
+
+  /**
+   * Tests that getTaskTypeInfo builds the expected criteria filters (task type and client),
+   * limits the result to one row, and returns the unique result.
+   */
+  @Test
+  void testGetTaskTypeInfoReturnsUniqueResult() {
+    @SuppressWarnings("unchecked") OBCriteria<TaskTypeInfo> crit = mock(OBCriteria.class);
+    when(mockOBContext.getCurrentClient()).thenReturn(mockClient);
+    when(mockDal.createCriteria(TaskTypeInfo.class)).thenReturn(crit);
+    when(crit.add(any(Criterion.class))).thenReturn(crit);
+    when(crit.setMaxResults(1)).thenReturn(crit);
+    when(crit.uniqueResult()).thenReturn(mockTaskTypeInfo);
+
+    try (MockedStatic<OBDal> obdalStatic = mockStatic(
+        OBDal.class); MockedStatic<OBContext> obContextStatic = mockStatic(OBContext.class)) {
+      obdalStatic.when(OBDal::getInstance).thenReturn(mockDal);
+      obContextStatic.when(OBContext::getOBContext).thenReturn(mockOBContext);
+      TaskTypeInfo result = TaskUtil.getTaskTypeInfo(mockTaskType);
+
+      assertSame(mockTaskTypeInfo, result);
+      verify(mockDal).createCriteria(TaskTypeInfo.class);
+      verify(crit, times(2)).add(any(Criterion.class));
+      verify(crit).setMaxResults(1);
+      verify(crit).uniqueResult();
+    }
+  }
+
+  /**
+   * Tests that getRoundRobinIndex(TaskType, int) returns 0
+   * when the stored round-robin index is null.
+   */
+  @Test
+  void testGetRoundRobinIndexReturnsZeroWhenIndexIsNull() {
+    try (MockedStatic<TaskUtil> utilStatic = mockStatic(TaskUtil.class, CALLS_REAL_METHODS)) {
+      utilStatic.when(() -> TaskUtil.getRoundRobinIndex(mockTaskType)).thenReturn(null);
+      int result = TaskUtil.getRoundRobinIndex(mockTaskType, 5);
+      assertEquals(0, result);
+    }
+  }
+
+  /**
+   * Tests that getRoundRobinIndex(TaskType, int) returns the current index
+   * when it is within the valid range.
+   */
+  @Test
+  void testGetRoundRobinIndexReturnsCurrentIndexWhenWithinBounds() {
+    try (MockedStatic<TaskUtil> utilStatic = mockStatic(TaskUtil.class, CALLS_REAL_METHODS)) {
+      utilStatic.when(() -> TaskUtil.getRoundRobinIndex(mockTaskType)).thenReturn(2L);
+      int result = TaskUtil.getRoundRobinIndex(mockTaskType, 5);
+      assertEquals(2, result);
+    }
+  }
+
+  /**
+   * Tests that getRoundRobinIndex(TaskType, int) resets to 0
+   * when the current index is equal to maxSize.
+   */
+  @Test
+  void testGetRoundRobinIndexResetsWhenIndexEqualsMaxSize() {
+    try (MockedStatic<TaskUtil> utilStatic = mockStatic(TaskUtil.class, CALLS_REAL_METHODS)) {
+      utilStatic.when(() -> TaskUtil.getRoundRobinIndex(mockTaskType)).thenReturn(5L);
+      int result = TaskUtil.getRoundRobinIndex(mockTaskType, 5);
+      assertEquals(0, result);
+    }
+  }
+
+  /**
+   * Tests that getRoundRobinIndex(TaskType, int) resets to 0
+   * when the current index exceeds maxSize.
+   */
+  @Test
+  void testGetRoundRobinIndexResetsWhenIndexExceedsMaxSize() {
+    try (MockedStatic<TaskUtil> utilStatic = mockStatic(TaskUtil.class, CALLS_REAL_METHODS)) {
+      utilStatic.when(() -> TaskUtil.getRoundRobinIndex(mockTaskType)).thenReturn(10L);
+      int result = TaskUtil.getRoundRobinIndex(mockTaskType, 5);
+      assertEquals(0, result);
+    }
+  }
+
+  /**
+   * Tests that getRoundRobinIndex(TaskType) returns 0L when no TaskTypeInfo is found.
+   */
+  @Test
+  void testGetRoundRobinIndexReturnsZeroWhenTaskTypeInfoIsNull() {
+    when(mockTaskType.getId()).thenReturn("TT-1");
+
+    try (MockedStatic<TaskUtil> utilStatic = mockStatic(TaskUtil.class, CALLS_REAL_METHODS)) {
+      utilStatic.when(() -> TaskUtil.getTaskTypeInfo(mockTaskType)).thenReturn(null);
+      Long result = TaskUtil.getRoundRobinIndex(mockTaskType);
+      assertEquals(0L, result);
+      utilStatic.verify(() -> TaskUtil.getTaskTypeInfo(mockTaskType));
+    }
+  }
+
+  /**
+   * Tests that getRoundRobinIndex(TaskType) returns the stored round-robin index
+   * when a TaskTypeInfo is found.
+   */
+  @Test
+  void testGetRoundRobinIndexReturnsValueFromTaskTypeInfo() {
+    when(mockTaskTypeInfo.getRoundRobinIndex()).thenReturn(7L);
+
+    try (MockedStatic<TaskUtil> utilStatic = mockStatic(TaskUtil.class, CALLS_REAL_METHODS)) {
+      utilStatic.when(() -> TaskUtil.getTaskTypeInfo(mockTaskType)).thenReturn(mockTaskTypeInfo);
+      Long result = TaskUtil.getRoundRobinIndex(mockTaskType);
+      assertEquals(7L, result);
+      utilStatic.verify(() -> TaskUtil.getTaskTypeInfo(mockTaskType));
+      verify(mockTaskTypeInfo).getRoundRobinIndex();
+    }
+  }
+
+  /**
+   * Tests that getRoundRobinIndex(TaskType) propagates null when TaskTypeInfo exists
+   * but its round-robin index is null.
+   */
+  @Test
+  void testGetRoundRobinIndexReturnsNullWhenStoredIndexIsNull() {
+    when(mockTaskTypeInfo.getRoundRobinIndex()).thenReturn(null);
+
+    try (MockedStatic<TaskUtil> utilStatic = mockStatic(TaskUtil.class, CALLS_REAL_METHODS)) {
+      utilStatic.when(() -> TaskUtil.getTaskTypeInfo(mockTaskType)).thenReturn(mockTaskTypeInfo);
+      Long result = TaskUtil.getRoundRobinIndex(mockTaskType);
+
+      assertNull(result); 
     }
   }
 

@@ -137,7 +137,7 @@ public class TaskTypeMatchJob extends Action {
 
         //Task creation
         Task newTask = TaskUtil.createTask(rule.getTaskType(), init.getTaskStatus(), true, taskParams,
-            OBContext.getOBContext());
+            OBContext.getOBContext(), null);
         OBDal.getInstance().save(newTask);
         OBDal.getInstance().flush();
 
