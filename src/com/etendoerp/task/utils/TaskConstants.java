@@ -53,6 +53,7 @@ public class TaskConstants {
 
   /* Task constants */
   public static final String TASK_TABLENAME = "etask_task";
+  public static final String TASK_NO = "Taskno";
 
   /* Table Events constants */
   public static final String TABLE_CREATE = "insert";

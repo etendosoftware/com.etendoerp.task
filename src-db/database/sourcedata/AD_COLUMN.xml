@@ -1406,6 +1406,8 @@ Usually, company's internal identifiers for various records (products, customers
 <!--4196BE6C71F440338A21851CE75D1D15-->  <AD_ORG_ID><![CDATA[0]]></AD_ORG_ID>
 <!--4196BE6C71F440338A21851CE75D1D15-->  <ISACTIVE><![CDATA[Y]]></ISACTIVE>
 <!--4196BE6C71F440338A21851CE75D1D15-->  <NAME><![CDATA[EM_Etask_Task_Type ID]]></NAME>
+<!--4196BE6C71F440338A21851CE75D1D15-->  <DESCRIPTION><![CDATA[Identifier of the related record in the referenced table.]]></DESCRIPTION>
+<!--4196BE6C71F440338A21851CE75D1D15-->  <HELP><![CDATA[Stores the unique identifier (ID) of a record from a referenced table. This field is used to establish relationships between entities and ensures consistent linkage across the application.]]></HELP>
 <!--4196BE6C71F440338A21851CE75D1D15-->  <COLUMNNAME><![CDATA[EM_Etask_Task_Type_ID]]></COLUMNNAME>
 <!--4196BE6C71F440338A21851CE75D1D15-->  <AD_TABLE_ID><![CDATA[115]]></AD_TABLE_ID>
 <!--4196BE6C71F440338A21851CE75D1D15-->  <AD_REFERENCE_ID><![CDATA[18]]></AD_REFERENCE_ID>

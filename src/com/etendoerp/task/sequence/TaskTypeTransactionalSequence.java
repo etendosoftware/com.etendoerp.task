@@ -35,16 +35,44 @@ import com.etendoerp.sequences.transactional.RequiredDimensionException;
 import com.etendoerp.sequences.transactional.TransactionalSequenceUtils;
 import com.etendoerp.task.data.Task;
 import com.etendoerp.task.data.TaskType;
+import com.etendoerp.task.utils.TaskConstants;
 
+/**
+ * Transactional sequence implementation that generates values based on a task type context.
+ *
+ * <p>This class extends {@link DefaultTransactionalSequence} to support task type–specific
+ * sequence generation.
+ */
 public class TaskTypeTransactionalSequence extends DefaultTransactionalSequence {
-
   protected static final Logger log = LogManager.getLogger();
-  private static volatile String TASKNO_AD_COLUMN_ID;
+  protected static volatile String taskNoAdColumnId;
 
+  /**
+   * Creates a new transactional sequence using the given property value.
+   *
+   * @param propertyValue
+   *     the property value used to initialize the transactional sequence
+   */
   public TaskTypeTransactionalSequence(String propertyValue) {
     super(propertyValue);
   }
 
+  /**
+   * Generates and returns a task number value for the given owner.
+   *
+   * <p>If the owner is not a {@link Task}, the default generation logic is applied.
+   * For tasks, an existing non-preview value is reused when present; otherwise,
+   * a new value is generated using the configured sequence parameters. If required
+   * information is missing or no sequence is found, an empty string is returned.
+   *
+   * @param session
+   *     the Hibernate session used during value generation
+   * @param owner
+   *     the entity for which the value is being generated
+   * @return the generated or existing task number, or an empty string if it cannot be resolved
+   * @throws OBException
+   *     if a required dimension is missing or an unexpected error occurs
+   */
   @Override
   public String generateValue(Session session, Object owner) {
     if (!(owner instanceof Task)) {
@@ -89,30 +117,50 @@ public class TaskTypeTransactionalSequence extends DefaultTransactionalSequence 
     }
   }
 
-  private String resolveTaskNoColumnId() {
-    if (TASKNO_AD_COLUMN_ID != null) {
-      return TASKNO_AD_COLUMN_ID;
+  /**
+   * Resolves and returns the identifier of the database column associated with the task number.
+   *
+   * <p>If the identifier has already been resolved, it is returned from cache. Otherwise, the method
+   * queries the active task table and retrieves the identifier of the active column named {@code Taskno}.
+   *
+   * @return the identifier of the task number column
+   */
+  protected static String resolveTaskNoColumnId() {
+    if (taskNoAdColumnId != null) {
+      return taskNoAdColumnId;
     }
 
     final var tableCrit = OBDal.getInstance().createCriteria(Table.class);
-    tableCrit.add(Restrictions.ilike(Table.PROPERTY_DBTABLENAME, "etask_task"));
+    tableCrit.add(Restrictions.ilike(Table.PROPERTY_DBTABLENAME, TaskConstants.TASK_TABLENAME));
     tableCrit.add(Restrictions.eq(Table.PROPERTY_ACTIVE, true));
     tableCrit.setMaxResults(1);
 
     final var tables = tableCrit.list();
     final Table taskTable = tables.get(0);
+
     final var colCrit = OBDal.getInstance().createCriteria(Column.class);
     colCrit.add(Restrictions.eq(Column.PROPERTY_TABLE, taskTable));
-    colCrit.add(Restrictions.ilike(Column.PROPERTY_DBCOLUMNNAME, "taskno"));
+    colCrit.add(Restrictions.eq(Column.PROPERTY_DBCOLUMNNAME, TaskConstants.TASK_NO));
     colCrit.add(Restrictions.eq(Column.PROPERTY_ACTIVE, true));
     colCrit.setMaxResults(1);
+
     final var cols = colCrit.list();
 
-    TASKNO_AD_COLUMN_ID = cols.get(0).getId();
-    return TASKNO_AD_COLUMN_ID;
+    taskNoAdColumnId = cols.get(0).getId();
+    return taskNoAdColumnId;
   }
 
-  private boolean isPreviewValue(String v) {
+  /**
+   * Determines whether the given value represents a preview placeholder.
+   *
+   * <p>A value is considered a preview if it is non-null, trimmed, longer than two characters,
+   * starts with {@code '<'}, and ends with {@code '>'}.
+   *
+   * @param v
+   *     the value to evaluate
+   * @return {@code true} if the value matches the preview format, {@code false} otherwise
+   */
+  protected boolean isPreviewValue(String v) {
     if (v == null) return false;
     final String s = v.trim();
     return s.length() > 2 && s.startsWith("<") && s.endsWith(">");

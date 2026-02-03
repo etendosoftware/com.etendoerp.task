@@ -30,15 +30,35 @@ import com.etendoerp.task.data.Task;
 import com.etendoerp.task.data.TaskType;
 import com.etendoerp.task.sequence.TaskTypeTransactionalSequence;
 
+/**
+ * Persistence event observer that manages automatic task number generation.
+ *
+ * <p>This observer reacts to task creation and updates to ensure that the task
+ * number is generated or regenerated when a preview value is present or when
+ * the task type changes.
+ */
 public class TaskSequenceObserver extends EntityPersistenceEventObserver {
-
   private static final Entity[] entities = { ModelProvider.getInstance().getEntity(Task.ENTITY_NAME) };
 
+  /**
+   * Returns the entities observed by this event observer.
+   *
+   * @return the array of observed entities
+   */
   @Override
   protected Entity[] getObservedEntities() {
     return entities;
   }
 
+  /**
+   * Handles update events for tasks to regenerate the task number when needed.
+   *
+   * <p>The task number is regenerated if it contains a preview value or if the
+   * task type has changed between the previous and current state.
+   *
+   * @param event
+   *     the entity update event being observed
+   */
   public void onUpdate(@Observes EntityUpdateEvent event) {
     if (!isValidEvent(event)) {
       return;
@@ -63,6 +83,15 @@ public class TaskSequenceObserver extends EntityPersistenceEventObserver {
     event.setCurrentState(taskNoProp, newValue);
   }
 
+  /**
+   * Handles save events for new tasks to replace preview task numbers.
+   *
+   * <p>If the task number contains a preview value at creation time, a final
+   * value is generated and assigned.
+   *
+   * @param event
+   *     the entity new event being observed
+   */
   public void onSave(@Observes EntityNewEvent event) {
     if (!isValidEvent(event)) {
       return;
@@ -81,7 +110,17 @@ public class TaskSequenceObserver extends EntityPersistenceEventObserver {
     event.setCurrentState(taskNoProp, newValue);
   }
 
-  private boolean isPreviewValue(String v) {
+  /**
+   * Determines whether the given value represents a preview task number.
+   *
+   * <p>A value is considered a preview if it is non-null, trimmed, and enclosed
+   * in angle brackets.
+   *
+   * @param v
+   *     the value to evaluate
+   * @return {@code true} if the value is a preview value, {@code false} otherwise
+   */
+  protected boolean isPreviewValue(String v) {
     if (v == null) return false;
     String s = v.trim();
     return s.startsWith("<") && s.endsWith(">");

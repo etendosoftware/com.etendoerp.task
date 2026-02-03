@@ -22,8 +22,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.hibernate.criterion.Restrictions;
 import org.openbravo.base.exception.OBException;
 import org.openbravo.dal.core.OBContext;
-import org.openbravo.dal.service.OBDal;
 import org.openbravo.dal.service.OBCriteria;
+import org.openbravo.dal.service.OBDal;
 import org.openbravo.erpCommon.ad_callouts.SimpleCallout;
 import org.openbravo.model.ad.datamodel.Column;
 import org.openbravo.model.ad.datamodel.Table;
@@ -36,11 +36,31 @@ import com.etendoerp.sequences.transactional.MaskValueGenerationException;
 import com.etendoerp.sequences.transactional.NotFoundSequenceException;
 import com.etendoerp.sequences.transactional.RequiredDimensionException;
 import com.etendoerp.sequences.transactional.TransactionalSequenceUtils;
+import com.etendoerp.task.utils.TaskConstants;
 
+/**
+ * Callout that generates a preview task number based on the selected task type.
+ *
+ * <p>This callout resolves the appropriate sequence for the task type and returns
+ * a preview value wrapped in angle brackets, or an empty value when the sequence
+ * cannot be resolved.
+ */
 public class TaskTypeCallout extends SimpleCallout {
   private static final String PARAM_TASK_TYPE_ID = "inpetaskTaskTypeId";
   private static final String PARAM_TASK_NO = "inptaskno";
 
+  /**
+   * Executes the callout logic to update the task number field.
+   *
+   * <p>If no task type is provided, the task number is cleared. Otherwise, a preview
+   * value is generated using transactional sequence parameters derived from the
+   * current client, organization, table, and task type.
+   *
+   * @param info
+   *     the callout context containing request parameters and response values
+   * @throws ServletException
+   *     if an error occurs during callout execution
+   */
   @Override
   protected void execute(CalloutInfo info) throws ServletException {
 
@@ -84,18 +104,31 @@ public class TaskTypeCallout extends SimpleCallout {
     }
   }
 
-  private String resolveTaskNoColumnId(String tableId) {
+  /**
+   * Resolves the identifier of the task number column for the given table.
+   *
+   * <p>The method searches for a column named {@code Taskno} in the specified table.
+   * If no matching column is found, an exception is raised.
+   *
+   * @param tableId
+   *     the identifier of the table to search
+   * @return the identifier of the task number column
+   * @throws OBException
+   *     if the column cannot be found for the given table
+   */
+  protected String resolveTaskNoColumnId(String tableId) {
     OBCriteria<Column> cCrit = OBDal.getInstance().createCriteria(Column.class);
     cCrit.setFilterOnReadableClients(false);
     cCrit.setFilterOnReadableOrganization(false);
     cCrit.createAlias(Column.PROPERTY_TABLE, "t");
     cCrit.add(Restrictions.eq("t." + Table.PROPERTY_ID, tableId));
-    cCrit.add(Restrictions.ilike(Column.PROPERTY_DBCOLUMNNAME, "Taskno"));
+    cCrit.add(Restrictions.eq(Column.PROPERTY_DBCOLUMNNAME, TaskConstants.TASK_NO));
     cCrit.setMaxResults(1);
 
     final Column col = (Column) cCrit.uniqueResult();
     if (col == null) {
-      throw new OBException("Couldn't find AD_Column for tableId=" + tableId + " and dbColumnName=Taskno");
+      throw new OBException(
+          "Couldn't find AD_Column for tableId=" + tableId + " and dbColumnName=" + TaskConstants.TASK_NO);
     }
     return col.getId();
   }
