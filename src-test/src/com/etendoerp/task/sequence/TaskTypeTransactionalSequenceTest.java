@@ -113,7 +113,7 @@ class TaskTypeTransactionalSequenceTest {
    */
   @AfterEach
   void tearDown() {
-    TaskTypeTransactionalSequence.taskNoAdColumnId = null;
+    clearTaskNoColumnCache();
   }
 
   /**
@@ -141,22 +141,26 @@ class TaskTypeTransactionalSequenceTest {
    */
   @Test
   void testGenerateValueWhenCurrentTaskNoIsPreviewThenClearsAndGeneratesNewValue() {
-    TaskTypeTransactionalSequence.taskNoAdColumnId = COLUMN_ID;
-    TaskTypeTransactionalSequence seq = new TaskTypeTransactionalSequence(TaskConstants.TASK_NO);
+    try (MockedStatic<TaskTypeTransactionalSequence> tts = mockStatic(
+        TaskTypeTransactionalSequence.class); MockedStatic<TransactionalSequenceUtils> tsu = mockStatic(
+        TransactionalSequenceUtils.class)) {
 
-    when(mockTask.getTaskNo()).thenReturn(PREVIEW_VALUE);
-    when(mockTask.getTaskType()).thenReturn(mockTaskType);
-    when(mockTask.getClient()).thenReturn(mockClient);
-    when(mockTask.getOrganization()).thenReturn(mockOrganization);
-    when(mockClient.getId()).thenReturn(CLIENT_ID);
-    when(mockOrganization.getId()).thenReturn(ORG_ID);
-    when(mockTaskType.getId()).thenReturn(TASK_TYPE_ID);
+      tts.when(TaskTypeTransactionalSequence::resolveTaskNoColumnId).thenReturn(COLUMN_ID);
 
-    try (MockedStatic<TransactionalSequenceUtils> tsu = mockStatic(TransactionalSequenceUtils.class)) {
       tsu.when(() -> TransactionalSequenceUtils.getSequenceFromParameters(any(SequenceParameterList.class))).thenReturn(
           mockSequence);
       tsu.when(() -> TransactionalSequenceUtils.getNextValueFromSequence(eq(mockSequence), eq(true))).thenReturn(
           GENERATED_TASK_NO);
+
+      TaskTypeTransactionalSequence seq = new TaskTypeTransactionalSequence(TaskConstants.TASK_NO);
+
+      when(mockTask.getTaskNo()).thenReturn(PREVIEW_VALUE);
+      when(mockTask.getTaskType()).thenReturn(mockTaskType);
+      when(mockTask.getClient()).thenReturn(mockClient);
+      when(mockTask.getOrganization()).thenReturn(mockOrganization);
+      when(mockClient.getId()).thenReturn(CLIENT_ID);
+      when(mockOrganization.getId()).thenReturn(ORG_ID);
+      when(mockTaskType.getId()).thenReturn(TASK_TYPE_ID);
 
       String result = seq.generateValue(mockSession, mockTask);
 
@@ -189,25 +193,28 @@ class TaskTypeTransactionalSequenceTest {
    */
   @Test
   void testGenerateValueWhenRequiredDimensionMissingThenThrowsOBException() {
-    TaskTypeTransactionalSequence.taskNoAdColumnId = COLUMN_ID;
-    TaskTypeTransactionalSequence seq = new TaskTypeTransactionalSequence(TaskConstants.TASK_NO);
+    try (MockedStatic<TaskTypeTransactionalSequence> tts = mockStatic(TaskTypeTransactionalSequence.class)) {
 
-    when(mockTask.getTaskNo()).thenReturn(null);
-    when(mockTask.getTaskType()).thenReturn(mockTaskType);
-    when(mockTask.getClient()).thenReturn(mockClient);
-    when(mockTask.getOrganization()).thenReturn(mockOrganization);
-    when(mockClient.getId()).thenReturn(CLIENT_ID);
-    when(mockOrganization.getId()).thenReturn(ORG_ID);
-    when(mockTaskType.getId()).thenReturn(TASK_TYPE_ID);
+      tts.when(TaskTypeTransactionalSequence::resolveTaskNoColumnId).thenReturn(COLUMN_ID);
+      TaskTypeTransactionalSequence seq = new TaskTypeTransactionalSequence(TaskConstants.TASK_NO);
 
-    RequiredDimensionException ex = new RequiredDimensionException(REQUIRED_DIMENSION);
+      when(mockTask.getTaskNo()).thenReturn(null);
+      when(mockTask.getTaskType()).thenReturn(mockTaskType);
+      when(mockTask.getClient()).thenReturn(mockClient);
+      when(mockTask.getOrganization()).thenReturn(mockOrganization);
+      when(mockClient.getId()).thenReturn(CLIENT_ID);
+      when(mockOrganization.getId()).thenReturn(ORG_ID);
+      when(mockTaskType.getId()).thenReturn(TASK_TYPE_ID);
 
-    try (MockedStatic<TransactionalSequenceUtils> tsu = mockStatic(TransactionalSequenceUtils.class)) {
-      tsu.when(() -> TransactionalSequenceUtils.getSequenceFromParameters(any(SequenceParameterList.class))).thenThrow(
-          ex);
+      RequiredDimensionException ex = new RequiredDimensionException(REQUIRED_DIMENSION);
 
-      OBException thrown = assertThrows(OBException.class, () -> seq.generateValue(mockSession, mockTask));
-      assertTrue(thrown.getMessage().contains(REQUIRED_DIMENSION));
+      try (MockedStatic<TransactionalSequenceUtils> tsu = mockStatic(TransactionalSequenceUtils.class)) {
+        tsu.when(
+            () -> TransactionalSequenceUtils.getSequenceFromParameters(any(SequenceParameterList.class))).thenThrow(ex);
+
+        OBException thrown = assertThrows(OBException.class, () -> seq.generateValue(mockSession, mockTask));
+        assertTrue(thrown.getMessage().contains(REQUIRED_DIMENSION));
+      }
     }
   }
 
@@ -217,23 +224,27 @@ class TaskTypeTransactionalSequenceTest {
    */
   @Test
   void testGenerateValueWhenUnexpectedExceptionThenThrowsOBException() {
-    TaskTypeTransactionalSequence.taskNoAdColumnId = COLUMN_ID;
-    TaskTypeTransactionalSequence seq = new TaskTypeTransactionalSequence(TaskConstants.TASK_NO);
+    try (MockedStatic<TaskTypeTransactionalSequence> tts = mockStatic(TaskTypeTransactionalSequence.class)) {
+      tts.when(TaskTypeTransactionalSequence::resolveTaskNoColumnId).thenReturn(COLUMN_ID);
 
-    when(mockTask.getTaskNo()).thenReturn(null);
-    when(mockTask.getTaskType()).thenReturn(mockTaskType);
-    when(mockTask.getClient()).thenReturn(mockClient);
-    when(mockTask.getOrganization()).thenReturn(mockOrganization);
-    when(mockClient.getId()).thenReturn(CLIENT_ID);
-    when(mockOrganization.getId()).thenReturn(ORG_ID);
-    when(mockTaskType.getId()).thenReturn(TASK_TYPE_ID);
+      TaskTypeTransactionalSequence seq = new TaskTypeTransactionalSequence(TaskConstants.TASK_NO);
 
-    try (MockedStatic<TransactionalSequenceUtils> tsu = mockStatic(TransactionalSequenceUtils.class)) {
-      tsu.when(() -> TransactionalSequenceUtils.getSequenceFromParameters(any(SequenceParameterList.class))).thenThrow(
-          new RuntimeException(RUNTIME_ERROR));
+      when(mockTask.getTaskNo()).thenReturn(null);
+      when(mockTask.getTaskType()).thenReturn(mockTaskType);
+      when(mockTask.getClient()).thenReturn(mockClient);
+      when(mockTask.getOrganization()).thenReturn(mockOrganization);
+      when(mockClient.getId()).thenReturn(CLIENT_ID);
+      when(mockOrganization.getId()).thenReturn(ORG_ID);
+      when(mockTaskType.getId()).thenReturn(TASK_TYPE_ID);
 
-      OBException thrown = assertThrows(OBException.class, () -> seq.generateValue(mockSession, mockTask));
-      assertEquals(RUNTIME_ERROR, thrown.getMessage());
+      try (MockedStatic<TransactionalSequenceUtils> tsu = mockStatic(TransactionalSequenceUtils.class)) {
+        tsu.when(
+            () -> TransactionalSequenceUtils.getSequenceFromParameters(any(SequenceParameterList.class))).thenThrow(
+            new RuntimeException(RUNTIME_ERROR));
+
+        OBException thrown = assertThrows(OBException.class, () -> seq.generateValue(mockSession, mockTask));
+        assertEquals(RUNTIME_ERROR, thrown.getMessage());
+      }
     }
   }
 
@@ -243,12 +254,14 @@ class TaskTypeTransactionalSequenceTest {
    */
   @Test
   void testResolveTaskNoColumnIdWhenCachedThenReturnsCachedAndDoesNotHitDB() {
-    TaskTypeTransactionalSequence.taskNoAdColumnId = CACHED_COLUMN_ID;
+    try (MockedStatic<TaskTypeTransactionalSequence> tts = mockStatic(TaskTypeTransactionalSequence.class)) {
+      tts.when(TaskTypeTransactionalSequence::resolveTaskNoColumnId).thenReturn(CACHED_COLUMN_ID);
 
-    try (MockedStatic<OBDal> obDalStatic = mockStatic(OBDal.class)) {
-      String result = TaskTypeTransactionalSequence.resolveTaskNoColumnId();
-      assertEquals(CACHED_COLUMN_ID, result);
-      obDalStatic.verifyNoInteractions();
+      try (MockedStatic<OBDal> obDalStatic = mockStatic(OBDal.class)) {
+        String result = TaskTypeTransactionalSequence.resolveTaskNoColumnId();
+        assertEquals(CACHED_COLUMN_ID, result);
+        obDalStatic.verifyNoInteractions();
+      }
     }
   }
 
@@ -258,8 +271,6 @@ class TaskTypeTransactionalSequenceTest {
    */
   @Test
   void testResolveTaskNoColumnIdWhenNotCachedThenQueriesDBAndCachesResult() {
-    TaskTypeTransactionalSequence.taskNoAdColumnId = null;
-
     when(mockColumn.getId()).thenReturn(RESOLVED_COLUMN_ID);
     when(mockOBDal.createCriteria(Table.class)).thenReturn(mockTableCriteria);
     when(mockOBDal.createCriteria(Column.class)).thenReturn(mockColumnCriteria);
@@ -295,5 +306,16 @@ class TaskTypeTransactionalSequenceTest {
     assertFalse(seq.isPreviewValue(">"));
     assertTrue(seq.isPreviewValue(PREVIEW_VALUE));
     assertTrue(seq.isPreviewValue("  <123>  "));
+  }
+
+  /**
+   * Clears the cached task number column identifier.
+   *
+   * <p>This helper method resets the static cache used to store the resolved
+   * task number column ID, ensuring a clean state for subsequent operations
+   * or test executions.
+   */
+  private static void clearTaskNoColumnCache() {
+    TaskTypeTransactionalSequence.taskNoAdColumnId = null;
   }
 }
