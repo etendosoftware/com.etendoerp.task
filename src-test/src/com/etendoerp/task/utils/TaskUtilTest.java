@@ -39,6 +39,7 @@ import java.util.Set;
 
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
+import org.hibernate.Session;
 import org.hibernate.criterion.Criterion;
 import org.hibernate.criterion.Restrictions;
 import org.junit.jupiter.api.Test;
@@ -50,6 +51,7 @@ import org.openbravo.base.exception.OBException;
 import org.openbravo.base.provider.OBProvider;
 import org.openbravo.client.application.Process;
 import org.openbravo.dal.core.OBContext;
+import org.openbravo.dal.core.SessionHandler;
 import org.openbravo.dal.service.OBCriteria;
 import org.openbravo.dal.service.OBDal;
 import org.openbravo.erpCommon.utility.OBMessageUtils;
@@ -159,6 +161,12 @@ class TaskUtilTest {
   @Mock
   private OBContext mockOBContext;
 
+  @Mock
+  private SessionHandler mockSessionHandler;
+
+  @Mock
+  private Session mockSession;
+
   /**
    * Helper method to setup common OBDal mock behavior.
    */
@@ -224,16 +232,20 @@ class TaskUtilTest {
 
     try (MockedStatic<OBContext> contextStatic = mockStatic(
         OBContext.class); MockedStatic<OBDal> ignored = setupOBDalMock(); MockedStatic<OBProvider> providerStatic = mockStatic(
-        OBProvider.class); MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class)) {
+        OBProvider.class); MockedStatic<SessionHandler> sessionHandlerStatic = mockStatic(
+        SessionHandler.class); MockedStatic<TaskUtil> taskUtilStatic = mockStatic(TaskUtil.class)) {
 
+      sessionHandlerStatic.when(SessionHandler::getInstance).thenReturn(mockSessionHandler);
+      when(mockSessionHandler.getSession()).thenReturn(mockSession);
       providerStatic.when(OBProvider::getInstance).thenReturn(mockProvider);
       contextStatic.when(OBContext::getOBContext).thenReturn(mockOBContext);
       when(mockOBContext.getUser()).thenReturn(mockUser);
 
       setupTaskCreationMocks();
 
-      taskUtilStatic.when(() -> TaskUtil.createTask(mockTaskType, mockStatus, assignOperatorAutomatically, parameters,
-          mockOBContext, null)).thenCallRealMethod();
+      taskUtilStatic.when(
+          () -> TaskUtil.createTask(mockTaskType, mockStatus, assignOperatorAutomatically, parameters, mockOBContext,
+              null)).thenCallRealMethod();
 
       if (assignOperatorAutomatically) {
         taskUtilStatic.when(() -> TaskUtil.setTaskUser(any(Task.class))).then(invocation -> null);
