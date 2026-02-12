@@ -27,6 +27,8 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import javax.enterprise.inject.Vetoed;
+
 import org.hibernate.Session;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -251,6 +253,7 @@ class TaskSequenceObserverTest {
   /**
    * Helper observer to control {@link TaskSequenceObserver#isValidEvent(EntityPersistenceEvent)}.
    */
+  @Vetoed
   static class TestableTaskSequenceObserver extends TaskSequenceObserver {
     private final boolean valid;
 
