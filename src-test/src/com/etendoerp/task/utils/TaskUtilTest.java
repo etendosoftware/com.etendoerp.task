@@ -245,14 +245,14 @@ class TaskUtilTest {
 
       taskUtilStatic.when(
           () -> TaskUtil.createTask(mockTaskType, mockStatus, assignOperatorAutomatically, parameters, mockOBContext,
-              null)).thenCallRealMethod();
+              null, null, null)).thenCallRealMethod();
 
       if (assignOperatorAutomatically) {
         taskUtilStatic.when(() -> TaskUtil.setTaskUser(any(Task.class))).then(invocation -> null);
       }
 
       Task result = TaskUtil.createTask(mockTaskType, mockStatus, assignOperatorAutomatically, parameters,
-          mockOBContext, null);
+          mockOBContext, null, null, null);
 
       assertEquals(mockTask, result);
       verifyTaskCreation();

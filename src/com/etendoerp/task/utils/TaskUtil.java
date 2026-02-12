@@ -18,6 +18,7 @@ package com.etendoerp.task.utils;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -482,12 +483,16 @@ public final class TaskUtil {
    *     the OBContext used during task creation
    * @param priority
    *     the task priority, or {@code null} to use the task type default
+   * @param startDate
+   *     the start date to assign to the task, or {@code null} to leave it unset
+   * @param dueDate
+   *     the due date to assign to the task, or {@code null} to leave it unset
    * @return the created {@link Task}
    * @throws OBException
    *     if an error occurs during task creation
    */
   public static Task createTask(TaskType taskType, Status status, boolean assignOperatorAutomatically,
-      JSONObject parameters, OBContext entityContext, TaskPriority priority) {
+      JSONObject parameters, OBContext entityContext, TaskPriority priority, Date startDate, Date dueDate) {
     try {
       OBContext.setAdminMode(true);
       OBContext.setOBContext(entityContext);
@@ -508,8 +513,7 @@ public final class TaskUtil {
       task.setUpdatedBy(user);
       task.setEventJsoninfo(parameters.toString());
 
-      TaskTypeTransactionalSequence generator = new TaskTypeTransactionalSequence(
-          TaskConstants.TASK_NO);
+      TaskTypeTransactionalSequence generator = new TaskTypeTransactionalSequence(TaskConstants.TASK_NO);
 
       String generated = generator.generateValue(SessionHandler.getInstance().getSession(), task);
       if (generated != null && !generated.trim().isEmpty()) {
@@ -524,6 +528,14 @@ public final class TaskUtil {
         task.setPriority(priority);
       } else {
         task.setPriority(taskType.getPriority());
+      }
+
+      if (startDate != null) {
+        task.setStartdate(startDate);
+      }
+
+      if (dueDate != null) {
+        task.setDuedate(dueDate);
       }
 
       OBDal.getInstance().save(task);
