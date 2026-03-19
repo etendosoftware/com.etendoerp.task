@@ -61,6 +61,18 @@
         <default/>
         <onCreateDefault/>
       </column>
+      <column name="TASKNO" primaryKey="false" required="false" type="VARCHAR" size="32" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+      <column name="STARTDATE" primaryKey="false" required="false" type="TIMESTAMP" size="7" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+      <column name="DUEDATE" primaryKey="false" required="false" type="TIMESTAMP" size="7" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
       <foreign-key foreignTable="AD_ROLE" name="ETASK_TASK_ASSGND_ROLE">
         <reference local="ASSIGNED_ROLE" foreign="AD_ROLE_ID"/>
       </foreign-key>

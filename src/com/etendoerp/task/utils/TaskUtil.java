@@ -18,6 +18,7 @@ package com.etendoerp.task.utils;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -40,6 +41,7 @@ import org.openbravo.base.provider.OBProvider;
 import org.openbravo.base.util.OBClassLoader;
 import org.openbravo.client.application.Process;
 import org.openbravo.dal.core.OBContext;
+import org.openbravo.dal.core.SessionHandler;
 import org.openbravo.dal.security.OrganizationStructureProvider;
 import org.openbravo.dal.service.OBCriteria;
 import org.openbravo.dal.service.OBDal;
@@ -57,6 +59,7 @@ import com.etendoerp.task.data.Task;
 import com.etendoerp.task.data.TaskPriority;
 import com.etendoerp.task.data.TaskType;
 import com.etendoerp.task.data.TaskTypeInfo;
+import com.etendoerp.task.sequence.TaskTypeTransactionalSequence;
 import com.etendoerp.task.strategy.UserAvailabilityStrategy;
 import com.smf.jobs.Action;
 import com.smf.jobs.ActionResult;
@@ -462,6 +465,11 @@ public final class TaskUtil {
    * If a priority is provided, it is assigned to the task; otherwise, the default
    * priority from the {@link TaskType} is used.
    * </p>
+   * <p>
+   * During creation, the task number is automatically generated using the
+   * transactional sequence configured for the selected {@link TaskType},
+   * ensuring the correct sequence is applied based on the defined dimensions.
+   * </p>
    *
    * @param taskType
    *     the task type to assign
@@ -471,19 +479,23 @@ public final class TaskUtil {
    *     whether to assign the operator automatically
    * @param parameters
    *     JSON containing task data, including client and organization IDs
-   * @param entityContex
+   * @param entityContext
    *     the OBContext used during task creation
    * @param priority
    *     the task priority, or {@code null} to use the task type default
+   * @param startDate
+   *     the start date to assign to the task, or {@code null} to leave it unset
+   * @param dueDate
+   *     the due date to assign to the task, or {@code null} to leave it unset
    * @return the created {@link Task}
    * @throws OBException
    *     if an error occurs during task creation
    */
   public static Task createTask(TaskType taskType, Status status, boolean assignOperatorAutomatically,
-      JSONObject parameters, OBContext entityContex, TaskPriority priority) {
+      JSONObject parameters, OBContext entityContext, TaskPriority priority, Date startDate, Date dueDate) {
     try {
       OBContext.setAdminMode(true);
-      OBContext.setOBContext(entityContex);
+      OBContext.setOBContext(entityContext);
       Task task = OBProvider.getInstance().get(Task.class);
 
       String clientId = parameters.optString("ad_client_id", "");
@@ -501,6 +513,13 @@ public final class TaskUtil {
       task.setUpdatedBy(user);
       task.setEventJsoninfo(parameters.toString());
 
+      TaskTypeTransactionalSequence generator = new TaskTypeTransactionalSequence(TaskConstants.TASK_NO);
+
+      String generated = generator.generateValue(SessionHandler.getInstance().getSession(), task);
+      if (generated != null && !generated.trim().isEmpty()) {
+        task.setTaskNo(generated.trim());
+      }
+
       if (assignOperatorAutomatically) {
         setTaskUser(task);
       }
@@ -509,6 +528,14 @@ public final class TaskUtil {
         task.setPriority(priority);
       } else {
         task.setPriority(taskType.getPriority());
+      }
+
+      if (startDate != null) {
+        task.setStartdate(startDate);
+      }
+
+      if (dueDate != null) {
+        task.setDuedate(dueDate);
       }
 
       OBDal.getInstance().save(task);
