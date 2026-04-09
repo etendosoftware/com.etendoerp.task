@@ -27,7 +27,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.Date;
 
-import javax.enterprise.inject.Vetoed;
+import jakarta.enterprise.inject.Vetoed;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

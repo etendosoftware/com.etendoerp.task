@@ -34,8 +34,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
-import org.hibernate.criterion.MatchMode;
-import org.hibernate.criterion.Restrictions;
+import org.openbravo.dal.service.Restrictions;
 import org.openbravo.base.exception.OBException;
 import org.openbravo.base.provider.OBProvider;
 import org.openbravo.base.util.OBClassLoader;
@@ -798,7 +797,7 @@ public final class TaskUtil {
     OBCriteria<org.openbravo.model.ad.datamodel.Table> tableOBCriteria = OBDal.getInstance().createCriteria(
         org.openbravo.model.ad.datamodel.Table.class);
     tableOBCriteria.add(
-        Restrictions.ilike(org.openbravo.model.ad.datamodel.Table.PROPERTY_DBTABLENAME, tableName, MatchMode.EXACT));
+        Restrictions.ilike(org.openbravo.model.ad.datamodel.Table.PROPERTY_DBTABLENAME, tableName));
     tableOBCriteria.setMaxResults(1);
     return (org.openbravo.model.ad.datamodel.Table) tableOBCriteria.uniqueResult();
   }
