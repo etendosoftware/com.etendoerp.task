@@ -196,7 +196,7 @@ class TaskTypeCalloutTest {
     when(mockCriteria.setFilterOnReadableClients(anyBoolean())).thenReturn(mockCriteria);
     when(mockCriteria.setFilterOnReadableOrganization(anyBoolean())).thenReturn(mockCriteria);
     when(mockCriteria.createAlias(anyString(), anyString())).thenReturn(mockCriteria);
-    when(mockCriteria.add(any(Criterion.class))).thenReturn(mockCriteria);
+    when(mockCriteria.add(any(Restriction.class))).thenReturn(mockCriteria);
     when(mockCriteria.setMaxResults(anyInt())).thenReturn(mockCriteria);
     when(mockCriteria.uniqueResult()).thenReturn(mockColumn);
   }

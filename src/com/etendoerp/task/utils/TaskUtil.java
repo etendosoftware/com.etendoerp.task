@@ -288,8 +288,7 @@ public final class TaskUtil {
     userOBCriteria.add(Restrictions.ne(User.PROPERTY_ID, "0"));
     userOBCriteria.add(Restrictions.eq(User.PROPERTY_ACTIVE, true));
     userOBCriteria.add(Restrictions.in(User.PROPERTY_ORGANIZATION + ".id", orgTree));
-    userOBCriteria.add(Restrictions.sqlRestriction( // Ensure user has at least one role
-        " exists (select 1 from ad_user_roles ur where ur.ad_user_id = {alias}.ad_user_id ) "));
+    userOBCriteria.add(Restrictions.isNotEmpty(User.PROPERTY_ADUSERROLESLIST));
     userOBCriteria.addOrderBy(User.PROPERTY_USERNAME, true);
 
     return userOBCriteria.list();
