@@ -53,8 +53,8 @@ sourceSets {
 */
 dependencies {
     implementation('org.apache.commons:commons-jexl3:3.3')
-    implementation('com.etendoerp:etendorx:4.0.2')
-    implementation('com.etendoerp:asyncprocess:3.0.0')
+    implementation('com.etendoerp:etendorx:4.0.2-SNAPSHOT')
+    implementation('com.etendoerp:asyncprocess:3.0.0-SNAPSHOT')
 
-    implementation('com.etendoerp.platform:etendo-core:[26.1.0,26.2.0)')
+    implementation('com.etendoerp.platform:etendo-core:[27.1.0,27.2.0)')
 }
