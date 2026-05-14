@@ -37,6 +37,9 @@ repositories {
     maven {
         url "https://maven.pkg.github.com/etendosoftware/com.etendoerp.essentials.extensions"
     }
+    maven {
+        url "https://repo.futit.cloud/repository/maven-snapshots"
+    }
 }
 
 sourceSets {
