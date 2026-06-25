@@ -10,7 +10,7 @@ group          = "com.etendoerp"
 version        = "4.0.2"
 description    = "This module provides the possibility of defining generic tasks."
 ext.artifact   = "task"
-ext.repository = "https://maven.pkg.github.com/etendosoftware/com.etendoerp.essentials.extensions"
+ext.repository = "https://repo.futit.cloud/repository/maven-snapshots"
 
 configurations {
     moduleDependencyContainer
@@ -27,7 +27,11 @@ publishing {
     }
     repositories {
         maven {
-            url "https://maven.pkg.github.com/etendosoftware/com.etendoerp.essentials.extensions"
+            url "https://repo.futit.cloud/repository/maven-snapshots"
+            credentials {
+                username = project.findProperty("nexusUser") ?: System.getProperty("nexusUser") ?: System.getenv("NEXUS_USR") ?: ""
+                password = project.findProperty("nexusPassword") ?: System.getProperty("nexusPassword") ?: System.getenv("NEXUS_PSW") ?: ""
+            }
         }
     }
 }
@@ -35,7 +39,7 @@ publishing {
 repositories {
     mavenCentral()
     maven {
-        url "https://maven.pkg.github.com/etendosoftware/com.etendoerp.essentials.extensions"
+        url "https://repo.futit.cloud/repository/maven-snapshots"
     }
     maven {
         url "https://repo.futit.cloud/repository/maven-snapshots"
@@ -56,7 +60,7 @@ sourceSets {
 */
 dependencies {
     implementation('org.apache.commons:commons-jexl3:3.3')
-    implementation('com.etendoerp:etendorx:4.0.2-SNAPSHOT')
+    implementation('com.etendoerp:etendorx:4.1.1-SNAPSHOT')
     implementation('com.etendoerp:asyncprocess:3.0.0-SNAPSHOT')
 
     implementation('com.etendoerp.platform:etendo-core:[27.1.0,27.2.0)')
