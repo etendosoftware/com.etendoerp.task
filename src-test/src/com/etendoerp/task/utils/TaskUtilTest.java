@@ -40,8 +40,8 @@ import java.util.Set;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.hibernate.Session;
-import org.hibernate.criterion.Criterion;
-import org.hibernate.criterion.Restrictions;
+import org.openbravo.dal.service.Restriction;
+import org.openbravo.dal.service.Restrictions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -825,7 +825,7 @@ class TaskUtilTest {
     @SuppressWarnings("unchecked") OBCriteria<TaskTypeInfo> crit = mock(OBCriteria.class);
     when(mockOBContext.getCurrentClient()).thenReturn(mockClient);
     when(mockDal.createCriteria(TaskTypeInfo.class)).thenReturn(crit);
-    when(crit.add(any(Criterion.class))).thenReturn(crit);
+    when(crit.add(any(Restriction.class))).thenReturn(crit);
     when(crit.setMaxResults(1)).thenReturn(crit);
     when(crit.uniqueResult()).thenReturn(mockTaskTypeInfo);
 
@@ -837,7 +837,7 @@ class TaskUtilTest {
 
       assertSame(mockTaskTypeInfo, result);
       verify(mockDal).createCriteria(TaskTypeInfo.class);
-      verify(crit, times(2)).add(any(Criterion.class));
+      verify(crit, times(2)).add(any(Restriction.class));
       verify(crit).setMaxResults(1);
       verify(crit).uniqueResult();
     }

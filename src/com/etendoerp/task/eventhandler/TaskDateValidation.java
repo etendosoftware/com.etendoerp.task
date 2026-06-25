@@ -18,7 +18,7 @@ package com.etendoerp.task.eventhandler;
 
 import java.util.Date;
 
-import javax.enterprise.event.Observes;
+import jakarta.enterprise.event.Observes;
 
 import org.openbravo.base.exception.OBException;
 import org.openbravo.base.model.Entity;

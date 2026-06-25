@@ -33,7 +33,7 @@ import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.hibernate.criterion.Criterion;
+import org.openbravo.dal.service.Restriction;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -196,7 +196,7 @@ class TaskTypeCalloutTest {
     when(mockCriteria.setFilterOnReadableClients(anyBoolean())).thenReturn(mockCriteria);
     when(mockCriteria.setFilterOnReadableOrganization(anyBoolean())).thenReturn(mockCriteria);
     when(mockCriteria.createAlias(anyString(), anyString())).thenReturn(mockCriteria);
-    when(mockCriteria.add(any(Criterion.class))).thenReturn(mockCriteria);
+    when(mockCriteria.add(any(Restriction.class))).thenReturn(mockCriteria);
     when(mockCriteria.setMaxResults(anyInt())).thenReturn(mockCriteria);
     when(mockCriteria.uniqueResult()).thenReturn(mockColumn);
   }
