@@ -7,7 +7,7 @@
 */
 
 group          = "com.etendoerp"
-version        = "4.1.2"
+version        = "4.2.0"
 description    = "This module provides the possibility of defining generic tasks."
 ext.artifact   = "task"
 ext.repository = "https://maven.pkg.github.com/etendosoftware/com.etendoerp.essentials.extensions"
@@ -53,8 +53,8 @@ sourceSets {
 */
 dependencies {
     implementation('org.apache.commons:commons-jexl3:3.3')
-    implementation('com.etendoerp:etendorx:4.1.2')
-    implementation('com.etendoerp:asyncprocess:3.1.0')
+    implementation('com.etendoerp:etendorx:4.2.0')
+    implementation('com.etendoerp:asyncprocess:3.2.0')
 
-    implementation('com.etendoerp.platform:etendo-core:[26.1.0,26.2.0)')
+    implementation('com.etendoerp.platform:etendo-core:[26.1.0,26.3.0)')
 }
